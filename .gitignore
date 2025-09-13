@@ -1,0 +1,26 @@
+# Build outputs
+bin/
+obj/
+
+# VS/IDE files
+*.user
+*.suo
+*.vs/
+.vscode/
+
+# NuGet
+*.nupkg
+packages/
+
+# Logs and temp
+*.log
+*.tmp
+
+# Secrets
+appsettings.Development.json
+appsettings.json
+*.env
+
+# Node (if any)
+node_modules/
+dist/

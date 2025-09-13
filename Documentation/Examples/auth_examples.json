@@ -1,0 +1,90 @@
+{
+  "registerRequest": {
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "password": "SecurePassword123",
+    "phoneNumber": "+234 801 234 5678",
+    "preferredLanguage": "en",
+    "preferredMaxBudget": 3000,
+    "preferredMinRating": 4.0
+  },
+  "registerResponse": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwicm9sZSI6IlVzZXIiLCJpYXQiOjE2NDA5OTUyMDAsImV4cCI6MTY0MTA4MTYwMH0.example-signature",
+    "refreshToken": "refresh_123e4567-e89b-12d3-a456-426614174000",
+    "expiresAt": "2024-01-16T10:30:00Z",
+    "user": {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@example.com",
+      "role": "User"
+    }
+  },
+  "loginRequest": {
+    "email": "john.doe@example.com",
+    "password": "SecurePassword123"
+  },
+  "loginResponse": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwicm9sZSI6IlVzZXIiLCJpYXQiOjE2NDA5OTUyMDAsImV4cCI6MTY0MTA4MTYwMH0.example-signature",
+    "refreshToken": "refresh_123e4567-e89b-12d3-a456-426614174000",
+    "expiresAt": "2024-01-16T10:30:00Z",
+    "user": {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@example.com",
+      "role": "User"
+    }
+  },
+  "refreshTokenRequest": {
+    "refreshToken": "refresh_123e4567-e89b-12d3-a456-426614174000"
+  },
+  "refreshTokenResponse": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwicm9sZSI6IlVzZXIiLCJpYXQiOjE2NDA5OTUyMDAsImV4cCI6MTY0MTA4MTYwMH0.new-signature",
+    "refreshToken": "refresh_123e4567-e89b-12d3-a456-426614174001",
+    "expiresAt": "2024-01-16T10:30:00Z"
+  },
+  "currentUserResponse": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "phoneNumber": "+234 801 234 5678",
+    "role": "User",
+    "preferredLanguage": "en",
+    "preferredMaxBudget": 3000,
+    "preferredMinRating": 4.0,
+    "createdAt": "2024-01-01T10:30:00Z",
+    "lastLoginAt": "2024-01-15T08:45:00Z"
+  },
+  "changePasswordRequest": {
+    "currentPassword": "SecurePassword123",
+    "newPassword": "NewSecurePassword456"
+  },
+  "changePasswordResponse": {
+    "message": "Password changed successfully"
+  },
+  "authErrorResponses": {
+    "invalidCredentials": {
+      "message": "Invalid email or password",
+      "code": "AUTH_INVALID_CREDENTIALS"
+    },
+    "emailAlreadyExists": {
+      "message": "An account with this email already exists",
+      "code": "AUTH_EMAIL_EXISTS"
+    },
+    "tokenExpired": {
+      "message": "Token has expired",
+      "code": "AUTH_TOKEN_EXPIRED"
+    },
+    "invalidToken": {
+      "message": "Invalid or malformed token",
+      "code": "AUTH_TOKEN_INVALID"
+    },
+    "refreshTokenExpired": {
+      "message": "Refresh token has expired. Please login again.",
+      "code": "AUTH_REFRESH_TOKEN_EXPIRED"
+    }
+  }
+}
