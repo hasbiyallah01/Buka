@@ -17,11 +17,8 @@ packages/
 *.tmp
 
 # Secrets
-Documentation
+Documentation/
 appsettings.Development.json
 appsettings.json
 *.env
 
-# Node (if any)
-node_modules/
-dist/
