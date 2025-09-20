@@ -33,9 +33,6 @@ public class MapController : ControllerBase
     }
 
     [HttpPost("data")]
-    [ProducesResponseType(typeof(MapDataResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<MapDataResponse>> GetMapData([FromBody] MapDataRequest request)
     {
         try
@@ -95,10 +92,6 @@ public class MapController : ControllerBase
     }
 
     [HttpGet("cluster/{clusterId}")]
-    [ProducesResponseType(typeof(ClusterDetailsResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ClusterDetailsResponse>> GetClusterDetails(
         string clusterId,
         [FromQuery] [Required] double latitude,
@@ -145,9 +138,6 @@ public class MapController : ControllerBase
     }
 
     [HttpPost("clustering-params")]
-    [ProducesResponseType(typeof(ClusteringParamsResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ClusteringParamsResponse>> GetClusteringParams(
         [FromBody] MapBounds bounds,
         [FromQuery] [Range(1, 20)] int zoomLevel = 10,
@@ -182,9 +172,6 @@ public class MapController : ControllerBase
     }
 
     [HttpPost("statistics")]
-    [ProducesResponseType(typeof(MapStatisticsResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<MapStatisticsResponse>> GetMapStatistics([FromBody] MapBounds bounds)
     {
         try
@@ -218,9 +205,6 @@ public class MapController : ControllerBase
     }
 
     [HttpPost("google-maps-urls")]
-    [ProducesResponseType(typeof(GoogleMapsUrlResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public ActionResult<GoogleMapsUrlResponse> GenerateGoogleMapsUrls([FromBody] GoogleMapsUrlRequest request)
     {
         try

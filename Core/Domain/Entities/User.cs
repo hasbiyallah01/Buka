@@ -51,6 +51,9 @@ public class User
 
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public ICollection<AmalaSpot> CreatedSpots { get; set; } = new List<AmalaSpot>();
+    
+    [NotMapped]
+    public string UserName => $"{FirstName} {LastName}".Trim();
 }
 
 public enum UserRole

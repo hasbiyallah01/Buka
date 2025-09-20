@@ -72,7 +72,7 @@ public class AgentOrchestrator : BaseAgent, IAgentOrchestrator
         try
         {
 
-            var intent = await _nluAgent.ExtractIntent(input.Message, input.SessionId, input.UserLocation);
+            var intent = await _nluAgent.ExtractIntent(input.Message, input.SessionId, input.UserLocation, input.Language);
             
             return await ProcessUserIntentInternal(intent);
         }
@@ -95,7 +95,7 @@ public class AgentOrchestrator : BaseAgent, IAgentOrchestrator
         try
         {
 
-            var intent = await _nluAgent.ExtractIntentFromVoice(input.AudioData, input.SessionId, input.UserLocation);
+            var intent = await _nluAgent.ExtractIntentFromVoice(input.AudioData, input.SessionId, input.UserLocation, input.Language);
 
             var textResponse = await ProcessUserIntentInternal(intent);
 

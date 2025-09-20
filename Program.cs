@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using System.Text;
 using AmalaSpotLocator.Configuration;
 using AmalaSpotLocator.Data;
@@ -127,6 +126,9 @@ builder.Services.AddScoped<ISpotService, SpotService>();
 builder.Services.AddScoped<IVoiceProcessingService, VoiceProcessingService>();
 builder.Services.AddScoped<IGoogleMapsService, GoogleMapsService> ();
 builder.Services.AddScoped<IMapService, MapService> ();
+builder.Services.AddScoped<IBusynessService, BusynessService>();
+builder.Services.AddScoped<ISpotMappingService, SpotMappingService>();
+builder.Services.AddScoped<IHeatmapService, HeatmapService>();
 
 builder.Services.AddScoped <IAuthenticationService, AuthenticationService > ();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -146,10 +148,7 @@ builder.Services.AddScoped<IWebScrapingService, WebScrapingService>();
 builder.Services.AddScoped<ICandidateExtractionService, CandidateExtractionService>();
 builder.Services.AddScoped<ISpotDiscoveryService, SpotDiscoveryService>();
 
-builder.Services.AddDatabaseSeeding();
-
 var app = builder.Build();
-
 
 if (app.Environment.IsDevelopment())
 {

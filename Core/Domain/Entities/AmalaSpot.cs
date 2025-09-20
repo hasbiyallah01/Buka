@@ -53,6 +53,9 @@ public class AmalaSpot
 
     public User? CreatedByUser { get; set; }
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
+    
+    [NotMapped]
+    public double? DistanceKm { get; set; }
 }
 
 public enum PriceRange

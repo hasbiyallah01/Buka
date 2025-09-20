@@ -1,3 +1,5 @@
+using AmalaSpotLocator.Models;
+
 namespace AmalaSpotLocator.Models.SpotModel;
 
 public class SpotResponse
@@ -20,4 +22,5 @@ public class SpotResponse
     public bool IsVerified { get; set; }
     public double? DistanceKm { get; set; }
     public List<ReviewResponse>? Reviews { get; set; }
+    public BusynessInfo? BusynessInfo { get; set; }
 }

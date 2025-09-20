@@ -13,6 +13,8 @@ public interface IGoogleMapsService
 
     Task<IEnumerable<PlaceCandidate>> SearchPlacesAsync(Location center, double radiusMeters, string query = "amala restaurant");
 
+    Task<IEnumerable<PlaceCandidate>> SearchPlacesWithMultipleQueriesAsync(Location center, double radiusMeters, IEnumerable<string> queries);
+
     Task<PlaceDetails?> GetPlaceDetailsAsync(string placeId);
 
     Task<RouteInfo?> GetDirectionsAsync(Location origin, Location destination, TravelMode travelMode = TravelMode.Driving);

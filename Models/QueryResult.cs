@@ -21,4 +21,10 @@ public class QueryResult
     public Dictionary<string, object> Metadata { get; set; } = new();
     
     public DateTime ExecutedAt { get; set; } = DateTime.UtcNow;
+    
+    public string Message { get; set; } = string.Empty;
+    
+    public object? Data { get; set; }
+    
+    public string QueryType { get; set; } = string.Empty;
 }

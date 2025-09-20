@@ -22,8 +22,6 @@ public class HealthController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetHealth()
     {
         var healthResponse = new HealthResponse
@@ -79,7 +77,6 @@ public class HealthController : ControllerBase
     }
 
     [HttpGet("info")]
-    [ProducesResponseType(typeof(ApiInfoResponse), StatusCodes.Status200OK)]
     public IActionResult GetApiInfo()
     {
         var apiInfo = new ApiInfoResponse
@@ -142,7 +139,6 @@ public class HealthController : ControllerBase
     }
 
     [HttpGet("metrics")]
-    [ProducesResponseType(typeof(MetricsResponse), StatusCodes.Status200OK)]
     public IActionResult GetMetrics()
     {
         var metrics = new MetricsResponse

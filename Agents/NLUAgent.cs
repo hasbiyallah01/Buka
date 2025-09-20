@@ -40,18 +40,18 @@ public class NLUAgent : BaseAgent, INLUAgent
         _model = _configuration["OpenAI:Model"] ?? "gpt-4";
     }
     
-    public async Task<UserIntent> ExtractIntent(string userMessage, string? sessionId = null, Location? userLocation = null)
+    public async Task<UserIntent> ExtractIntent(string userMessage, string? sessionId = null, Location? userLocation = null, string? language = null)
     {
         return await ExecuteWithErrorHandling(
-            async () => await ExtractIntentInternal(userMessage, sessionId, userLocation),
+            async () => await ExtractIntentInternal(userMessage, sessionId, userLocation, language),
             nameof(ExtractIntent),
             ex => new NLUAgentException($"Failed to extract intent from message: {ex.Message}", ex));
     }
     
-    public async Task<UserIntent> ExtractIntentFromVoice(byte[] audioData, string? sessionId = null, Location? userLocation = null)
+    public async Task<UserIntent> ExtractIntentFromVoice(byte[] audioData, string? sessionId = null, Location? userLocation = null, string? language = null)
     {
         return await ExecuteWithErrorHandling(
-            async () => await ExtractIntentFromVoiceInternal(audioData, sessionId, userLocation),
+            async () => await ExtractIntentFromVoiceInternal(audioData, sessionId, userLocation, language),
             nameof(ExtractIntentFromVoice),
             ex => new NLUAgentException($"Failed to extract intent from voice: {ex.Message}", ex));
     }
@@ -64,7 +64,7 @@ public class NLUAgent : BaseAgent, INLUAgent
             ex => new NLUAgentException($"Failed to validate intent: {ex.Message}", ex));
     }
     
-    private async Task<UserIntent> ExtractIntentInternal(string userMessage, string? sessionId, Location? userLocation)
+    private async Task<UserIntent> ExtractIntentInternal(string userMessage, string? sessionId, Location? userLocation, string? language = null)
     {
         ValidateStringInput(userMessage, nameof(userMessage));
         
@@ -90,12 +90,12 @@ public class NLUAgent : BaseAgent, INLUAgent
             var responseContent = chatCompletion.Content[0].Text;
             Logger.LogDebug("OpenAI response: {Response}", responseContent);
             
-            var intent = ParseOpenAIResponse(responseContent, userMessage, sessionId, userLocation);
+            var intent = ParseOpenAIResponse(responseContent, userMessage, sessionId, userLocation, language);
 
             if (intent.Type == IntentType.Unknown)
             {
                 Logger.LogWarning("OpenAI failed to extract intent, falling back to basic detection");
-                intent = CreateFallbackIntent(userMessage, sessionId, userLocation);
+                intent = CreateFallbackIntent(userMessage, sessionId, userLocation, language);
             }
             
             return intent;
@@ -103,11 +103,11 @@ public class NLUAgent : BaseAgent, INLUAgent
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error calling OpenAI API, falling back to basic intent detection");
-            return CreateFallbackIntent(userMessage, sessionId, userLocation);
+            return CreateFallbackIntent(userMessage, sessionId, userLocation, language);
         }
     }
     
-    private async Task<UserIntent> ExtractIntentFromVoiceInternal(byte[] audioData, string? sessionId, Location? userLocation)
+    private async Task<UserIntent> ExtractIntentFromVoiceInternal(byte[] audioData, string? sessionId, Location? userLocation, string? language = null)
     {
         ValidateInput(audioData, nameof(audioData));
         
@@ -124,7 +124,7 @@ public class NLUAgent : BaseAgent, INLUAgent
             var transcribedText = await _voiceProcessingService.SpeechToTextAsync(audioData, "wav");
             Logger.LogInformation("Successfully transcribed voice to text: {Text}", transcribedText);
 
-            return await ExtractIntentInternal(transcribedText, sessionId, userLocation);
+            return await ExtractIntentInternal(transcribedText, sessionId, userLocation, language);
         }
         catch (VoiceProcessingException ex)
         {
@@ -160,18 +160,36 @@ public class NLUAgent : BaseAgent, INLUAgent
     
     private string DetectLanguage(string message)
     {
-
         var lowerMessage = message.ToLowerInvariant();
+        var pidginTerms = new[] { 
+            "wetin", "dey", "wey", "na", "make", "no", "go", "come", "see", "find", 
+            "where", "how", "wan", "fit", "chop", "food", "place", "near", "close",
+            "cheap", "pass", "beta", "fine", "good", "bad", "small", "big", "plenty"
+        };
+        var yorubaTerms = new[] { 
+            "bawo", "nibo", "ni mo se", "to dara", "ki lo", "elo ni", "wa", "ri", 
+            "fun mi", "mo fe", "mo wa", "ti o", "ni", "si", "ati", "tabi", "sugbon",
+            "amala", "gbegiri", "ewedu", "obe", "ounje", "ile", "ibi", "sunmo"
+        };
 
-        if (lowerMessage.Contains("wetin") || lowerMessage.Contains("dey") || lowerMessage.Contains("wey"))
+        var pidginCount = pidginTerms.Count(term => lowerMessage.Contains(term));
+        var yorubaCount = yorubaTerms.Count(term => lowerMessage.Contains(term));
+        if (pidginCount >= 2 || (pidginCount > yorubaCount && pidginCount > 0))
         {
-            return "pidgin";
+            return "pcm";
+        }
+        if (yorubaCount >= 2 || (yorubaCount > pidginCount && yorubaCount > 0))
+        {
+            return "yo";
+        }
+        if (pidginTerms.Any(term => lowerMessage.Contains(term)))
+        {
+            return "pcm";
         }
 
-        if (lowerMessage.Contains("bawo") || lowerMessage.Contains("nibo") || 
-            lowerMessage.Contains("ni mo se") || lowerMessage.Contains("to dara"))
+        if (yorubaTerms.Any(term => lowerMessage.Contains(term)))
         {
-            return "yoruba";
+            return "yo";
         }
 
         return "en";
@@ -180,38 +198,53 @@ public class NLUAgent : BaseAgent, INLUAgent
     private IntentType DetectIntentType(string message)
     {
         var lowerMessage = message.ToLowerInvariant();
-
-        if (lowerMessage.Contains("find") || lowerMessage.Contains("near") || 
-            lowerMessage.Contains("close") || lowerMessage.Contains("dey"))
+        var findTerms = new[] { 
+            "find", "near", "close", "nearby", "around", "search", "look for",
+            "dey", "where", "wey dey", "find me", "show me", "wetin dey",
+            "wa", "ri", "nibo", "sunmo", "ni agbegbe", "to wa nitosi"
+        };
+        
+        if (findTerms.Any(term => lowerMessage.Contains(term)))
         {
             return IntentType.FindNearbySpots;
         }
-
-        if (lowerMessage.Contains("details") || lowerMessage.Contains("info") || 
-            lowerMessage.Contains("about"))
+        var detailTerms = new[] { 
+            "details", "info", "about", "tell me", "information",
+            "wetin be", "how e be", "talk about",
+            "ki lo", "so fun mi", "elo ni"
+        };
+        
+        if (detailTerms.Any(term => lowerMessage.Contains(term)))
         {
             return IntentType.GetSpotDetails;
         }
-
-        if (lowerMessage.Contains("add") || lowerMessage.Contains("new spot") || 
-            lowerMessage.Contains("register"))
+        var addTerms = new[] { 
+            "add", "new spot", "register", "create", "submit",
+            "make new", "put new", "add new place",
+            "fi kun", "se tuntun", "gbe sinu"
+        };
+        
+        if (addTerms.Any(term => lowerMessage.Contains(term)))
         {
             return IntentType.AddNewSpot;
         }
-
-        if (lowerMessage.Contains("filter"))
-        {
-            return IntentType.FilterSpots;
-        }
-
-        if (lowerMessage.Contains("review") || lowerMessage.Contains("rate") || 
-            lowerMessage.Contains("rating"))
+        var reviewTerms = new[] { 
+            "review", "rate", "rating", "comment", "feedback",
+            "wetin you think", "how e be", "talk about am",
+            "ero mi", "ki lo ro", "so ero re"
+        };
+        
+        if (reviewTerms.Any(term => lowerMessage.Contains(term)))
         {
             return IntentType.AddReview;
         }
-
-        if (lowerMessage.Contains("direction") || lowerMessage.Contains("route") || 
-            lowerMessage.Contains("how to get"))
+        var directionTerms = new[] { 
+            "direction", "route", "how to get", "way to", "path to",
+            "how I go reach", "wetin be the way", "which way",
+            "ona", "bi mo se le de", "ibo ni mo le gba"
+        };
+        
+        if (directionTerms.Any(term => lowerMessage.Contains(term)))
         {
             return IntentType.GetDirections;
         }
@@ -222,41 +255,91 @@ public class NLUAgent : BaseAgent, INLUAgent
     private void ExtractBasicEntities(string message, UserIntent intent)
     {
         var lowerMessage = message.ToLowerInvariant();
+        var cheapTerms = new[] { 
+            "cheap", "budget", "affordable", "low price", "not expensive",
+            "cheap pass", "no cost much", "small money", "budget friendly",
+            "owo kekere", "ko gbowo", "owo die", "ti ko gbowo"
+        };
+        
+        var expensiveTerms = new[] { 
+            "expensive", "premium", "high end", "costly", "pricey",
+            "cost well well", "big money", "no cheap",
+            "owo nla", "gbowo", "owo pupọ"
+        };
 
-        if (lowerMessage.Contains("cheap") || lowerMessage.Contains("budget"))
+        if (cheapTerms.Any(term => lowerMessage.Contains(term)))
         {
             intent.MaxBudget = 1000; // Budget range
         }
-        else if (lowerMessage.Contains("expensive") || lowerMessage.Contains("premium"))
+        else if (expensiveTerms.Any(term => lowerMessage.Contains(term)))
         {
             intent.MaxBudget = null; // No budget limit
         }
+        var goodTerms = new[] { 
+            "good", "best", "quality", "nice", "fine",
+            "beta", "good well well", "sweet", "fine pass",
+            "dara", "to dara", "ti o dara", "to ga ju"
+        };
+        
+        var excellentTerms = new[] { 
+            "excellent", "top", "amazing", "perfect", "outstanding",
+            "best pass", "number one", "top notch",
+            "to ga ju", "ti o tayọ", "ọga"
+        };
 
-        if (lowerMessage.Contains("good") || lowerMessage.Contains("best"))
-        {
-            intent.MinRating = 4.0m;
-        }
-        else if (lowerMessage.Contains("excellent") || lowerMessage.Contains("top"))
+        if (excellentTerms.Any(term => lowerMessage.Contains(term)))
         {
             intent.MinRating = 4.5m;
         }
+        else if (goodTerms.Any(term => lowerMessage.Contains(term)))
+        {
+            intent.MinRating = 4.0m;
+        }
+        var veryCloseTerms = new[] { 
+            "very close", "walking", "walking distance", "very near",
+            "close well well", "I fit walk", "no far",
+            "sunmo pupọ", "to sunmo", "irin ajo kekere"
+        };
+        
+        var nearbyTerms = new[] { 
+            "nearby", "close", "near", "around here", "this area",
+            "for here", "around", "close by",
+            "nitosi", "ni agbegbe", "sunmo"
+        };
 
-        if (lowerMessage.Contains("very close") || lowerMessage.Contains("walking"))
+        if (veryCloseTerms.Any(term => lowerMessage.Contains(term)))
         {
             intent.MaxDistance = 1.0; // 1km
         }
-        else if (lowerMessage.Contains("nearby") || lowerMessage.Contains("close"))
+        else if (nearbyTerms.Any(term => lowerMessage.Contains(term)))
         {
             intent.MaxDistance = 5.0; // 5km
         }
+        var spicyTerms = new[] { 
+            "spicy", "hot", "pepper", "peppery",
+            "pepper well well", "hot pepper", "ata",
+            "ata pupọ", "gbona", "ata gbigbona"
+        };
+        
+        var amalaTerms = new[] { 
+            "amala", "gbegiri", "ewedu", "abula", "stew",
+            "amala funfun", "amala dudu", "obe"
+        };
 
-        if (lowerMessage.Contains("spicy"))
+        if (spicyTerms.Any(term => lowerMessage.Contains(term)))
         {
             intent.Preferences.Add("spicy");
         }
-        if (lowerMessage.Contains("vegetarian"))
+        foreach (var term in amalaTerms)
         {
-            intent.Preferences.Add("vegetarian");
+            if (lowerMessage.Contains(term))
+            {
+                intent.Preferences.Add(term);
+            }
+        }
+        if (amalaTerms.Any(term => lowerMessage.Contains(term)) && !intent.Preferences.Contains("amala"))
+        {
+            intent.Preferences.Add("amala");
         }
     }
     
@@ -266,8 +349,8 @@ public class NLUAgent : BaseAgent, INLUAgent
 Your task is to extract structured information from user messages in English, Nigerian Pidgin, or Yoruba.
 
 You must respond with a JSON object containing the following fields:
-- intentType: one of [""FindNearbySpots"", ""GetSpotDetails"", ""AddNewSpot"", ""AddReview"", ""GetDirections"", ""FilterSpots"", ""Unknown""]
-- language: detected language (""en"", ""pidgin"", ""yoruba"")
+- intentType: one of [""FindNearbySpots"", ""GetSpotDetails"", ""AddNewSpot"", ""AddReview"", ""GetDirections"", ""FilterSpots"", ""CheckBusyness"", ""SubmitCheckIn"", ""ViewHeatmap"", ""BusinessOpportunities"", ""UnderservedAreas"", ""Unknown""]
+- language: detected language (""en"", ""pcm"", ""yo"")
 - location: extracted location name or null
 - maxBudget: extracted budget limit in Naira or null
 - minRating: minimum rating preference (1-5) or null
@@ -275,21 +358,57 @@ You must respond with a JSON object containing the following fields:
 - preferences: array of food preferences/requirements
 
 Examples of queries you should understand:
-- English: ""Find cheap amala spots near Ikeja""
-- Pidgin: ""Where amala dey near Yaba wey cheap pass?""
-- Yoruba: ""Bawo ni mo se le ri amala to dara ni Ibadan?""
+
+ENGLISH:
+- ""Find cheap amala spots near Ikeja""
+- ""Show me good amala restaurants in Lagos""
+- ""Where can I get the best gbegiri and ewedu?""
+- ""Is Mama Put busy right now?"" (CheckBusyness)
+- ""How crowded is this restaurant?"" (CheckBusyness)
+- ""I'm here at the restaurant, it's very busy"" (SubmitCheckIn)
+- ""Show me amala heatmap for Lagos"" (ViewHeatmap)
+- ""Where should I open a new amala restaurant?"" (BusinessOpportunities)
+- ""Which areas need more amala spots?"" (UnderservedAreas)
+
+NIGERIAN PIDGIN:
+- ""Where amala dey near Yaba wey cheap pass?""
+- ""Abeg find me good buka for Surulere""
+- ""Wetin be the best amala joint for Victoria Island?""
+- ""I wan chop amala, where I fit find am for Ikeja?""
+- ""Show me mama put wey dey sell good amala""
+- ""This buka dey full o, people plenty well well"" (SubmitCheckIn)
+- ""Mama Put get queue? E dey busy?"" (CheckBusyness)
+- ""Where I fit open new amala business?"" (BusinessOpportunities)
+- ""Show me where amala no dey for Lagos"" (UnderservedAreas)
+
+YORUBA:
+- ""Bawo ni mo se le ri amala to dara ni Ibadan?""
+- ""Nibo ni mo le ra amala to dun ni Lagos?""
+- ""Mo fe amala ati gbegiri, nibo ni mo le ri won?""
+- ""Ibo lo dara ju fun amala ni agbegbe yi?""
+- ""Wa fun mi ile ounje ti won n ta amala to dara""
+- ""Ile ounje yi kun bi? Eniyan wa pupo?"" (CheckBusyness)
+- ""Mo wa ni ile ounje yi, o kun pupo"" (SubmitCheckIn)
+- ""Nibo ni mo le gbe ile ounje amala sile?"" (BusinessOpportunities)
 
 Common Nigerian locations: Lagos, Abuja, Ibadan, Kano, Port Harcourt, Benin City, Kaduna, Jos, Ilorin, Aba, Onitsha, Warri, Calabar, Akure, Abeokuta, Enugu, Sokoto, Maiduguri, Zaria, Owerri, Uyo, Bauchi, Katsina, Gombe, Yola, Makurdi, Lafia, Lokoja, Asaba, Awka, Ado-Ekiti, Osogbo, Abakaliki, Jalingo, Dutse, Birnin Kebbi, Damaturu, Gusau, Minna, Yenagoa.
 
-Budget ranges:
-- ""cheap""/""budget"": under ₦1000
-- ""moderate"": ₦1000-2500  
-- ""expensive""/""premium"": above ₦2500
+Budget indicators:
+ENGLISH: ""cheap"", ""budget"", ""affordable"" = under ₦1000 | ""expensive"", ""premium"" = above ₦2500
+PIDGIN: ""cheap pass"", ""no cost much"", ""small money"" = under ₦1000 | ""cost well well"", ""big money"" = above ₦2500  
+YORUBA: ""owo kekere"", ""ko gbowo"" = under ₦1000 | ""owo nla"", ""gbowo pupọ"" = above ₦2500
 
 Distance indicators:
-- ""very close""/""walking distance"": 1km
-- ""nearby""/""close"": 5km
-- ""far""/""anywhere"": no limit
+ENGLISH: ""very close"", ""walking distance"" = 1km | ""nearby"", ""close"" = 5km
+PIDGIN: ""close well well"", ""I fit walk"" = 1km | ""for here"", ""around"" = 5km
+YORUBA: ""sunmo pupọ"", ""irin ajo kekere"" = 1km | ""nitosi"", ""ni agbegbe"" = 5km
+
+Quality indicators:
+ENGLISH: ""good"", ""best"" = 4+ rating | ""excellent"", ""top"" = 4.5+ rating
+PIDGIN: ""beta"", ""sweet"" = 4+ rating | ""best pass"", ""number one"" = 4.5+ rating
+YORUBA: ""dara"", ""to dara"" = 4+ rating | ""to ga ju"", ""ọga"" = 4.5+ rating
+
+Food terms to recognize: amala, gbegiri, ewedu, abula, obe, stew, soup, buka, mama put, local food, traditional food
 
 Respond only with valid JSON, no additional text.";
     }
@@ -306,7 +425,7 @@ Respond only with valid JSON, no additional text.";
         return prompt;
     }
     
-    private UserIntent ParseOpenAIResponse(string responseContent, string originalMessage, string? sessionId, Location? userLocation)
+    private UserIntent ParseOpenAIResponse(string responseContent, string originalMessage, string? sessionId, Location? userLocation, string? providedLanguage = null)
     {
         try
         {
@@ -324,8 +443,12 @@ Respond only with valid JSON, no additional text.";
             if (aiResponse == null)
             {
                 Logger.LogWarning("Failed to deserialize OpenAI response");
-                return CreateFallbackIntent(originalMessage, sessionId, userLocation);
+                return CreateFallbackIntent(originalMessage, sessionId, userLocation, providedLanguage);
             }
+            var finalLanguage = providedLanguage ?? aiResponse.Language ?? DetectLanguage(originalMessage);
+            
+            Logger.LogInformation("Language resolution: Provided={ProvidedLanguage}, AI={AILanguage}, Detected={DetectedLanguage}, Final={FinalLanguage}", 
+                providedLanguage, aiResponse.Language, DetectLanguage(originalMessage), finalLanguage);
             
             return new UserIntent
             {
@@ -337,27 +460,31 @@ Respond only with valid JSON, no additional text.";
                 MinRating = aiResponse.MinRating,
                 MaxDistance = aiResponse.MaxDistance,
                 Preferences = aiResponse.Preferences ?? new List<string>(),
-                Language = aiResponse.Language ?? DetectLanguage(originalMessage),
+                Language = finalLanguage,
                 ExtractedAt = DateTime.UtcNow
             };
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error parsing OpenAI response: {Response}", responseContent);
-            return CreateFallbackIntent(originalMessage, sessionId, userLocation);
+            return CreateFallbackIntent(originalMessage, sessionId, userLocation, providedLanguage);
         }
     }
     
-    private UserIntent CreateFallbackIntent(string userMessage, string? sessionId, Location? userLocation)
+    private UserIntent CreateFallbackIntent(string userMessage, string? sessionId, Location? userLocation, string? providedLanguage = null)
     {
         Logger.LogInformation("Using fallback intent detection for message: {Message}", userMessage);
+        var finalLanguage = providedLanguage ?? DetectLanguage(userMessage);
+        
+        Logger.LogInformation("Fallback language resolution: Provided={ProvidedLanguage}, Detected={DetectedLanguage}, Final={FinalLanguage}", 
+            providedLanguage, DetectLanguage(userMessage), finalLanguage);
         
         var intent = new UserIntent
         {
             OriginalMessage = userMessage,
             SessionId = sessionId,
             TargetLocation = userLocation,
-            Language = DetectLanguage(userMessage),
+            Language = finalLanguage,
             Type = DetectIntentType(userMessage),
             ExtractedAt = DateTime.UtcNow
         };

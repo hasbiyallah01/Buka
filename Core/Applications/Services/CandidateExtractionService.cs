@@ -378,7 +378,6 @@ public class CandidateExtractionService : ICandidateExtractionService
         switch (candidate.Source)
         {
             case DiscoverySource.GooglePlaces:
-                // Higher base score for Google Places since they're pre-filtered by search terms
                 score += 0.3;
                 break;
             case DiscoverySource.WebScraping:

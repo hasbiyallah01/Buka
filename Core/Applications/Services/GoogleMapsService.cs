@@ -105,8 +105,8 @@ public class GoogleMapsService : IGoogleMapsService
         try
         {
             var url = $"{PlacesSearchBaseUrl}?query={Uri.EscapeDataString(query)}" +
-                     $"&location={center.Latitude},{center.Longitude}" +
-                     $"&radius={radiusMeters:F0}&key={_settings.PlacesApiKey}";
+                     $"&locationbias=circle:{radiusMeters:F0}@{center.Latitude},{center.Longitude}" +
+                     $"&key={_settings.PlacesApiKey}";
             
             _logger.LogDebug("Making Google Places API request to: {Url}", url.Replace(_settings.PlacesApiKey, "***"));
             
@@ -147,6 +147,36 @@ public class GoogleMapsService : IGoogleMapsService
             _logger.LogError(ex, "Error searching places with query: {Query}", query);
             return Enumerable.Empty<PlaceCandidate>();
         }
+    }
+
+    public async Task<IEnumerable<PlaceCandidate>> SearchPlacesWithMultipleQueriesAsync(Location center, double radiusMeters, IEnumerable<string> queries)
+    {
+        var allResults = new List<PlaceCandidate>();
+        var seenPlaceIds = new HashSet<string>();
+
+        foreach (var query in queries)
+        {
+            try
+            {
+                var results = await SearchPlacesAsync(center, radiusMeters, query);
+                
+                foreach (var result in results)
+                {
+                    if (!seenPlaceIds.Contains(result.PlaceId))
+                    {
+                        seenPlaceIds.Add(result.PlaceId);
+                        allResults.Add(result);
+                    }
+                }
+                await Task.Delay(100);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to search with query: {Query}", query);
+            }
+        }
+
+        return allResults;
     }
 
     public async Task<PlaceDetails?> GetPlaceDetailsAsync(string placeId)

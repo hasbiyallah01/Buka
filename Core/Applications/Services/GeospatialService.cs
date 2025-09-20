@@ -96,8 +96,6 @@ public class GeospatialService : IGeospatialService
 
             if (criteria.IsVerified.HasValue)
                 query = query.Where(s => s.IsVerified == criteria.IsVerified.Value);
-
-            // Apply time-based filtering before converting to client evaluation
             if (criteria.CurrentTime.HasValue)
             {
                 var currentTime = criteria.CurrentTime.Value;
@@ -111,8 +109,6 @@ public class GeospatialService : IGeospatialService
                          (currentTime >= s.OpeningTime.Value || currentTime <= s.ClosingTime.Value))
                     ));
             }
-
-            // Handle specialties filtering with client evaluation to avoid EF translation issues
             List<AmalaSpot> spots = await query.ToListAsync();
             
             if (criteria.Specialties?.Any() == true)

@@ -20,7 +20,7 @@ public static class SpotMappingExtensions
             }
             catch
             {
-                // Ignore distance calculation errors
+               
             }
         }
 

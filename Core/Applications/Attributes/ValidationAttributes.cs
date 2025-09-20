@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 
-namespace AmalaSpotLocator.Attributes;
+namespace AmalaSpotLocator.Core.Applications.Attributes;
 
 public class SafeStringAttribute : ValidationAttribute
 {

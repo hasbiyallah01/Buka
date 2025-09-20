@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using AmalaSpotLocator.Attributes;
+using AmalaSpotLocator.Core.Applications.Attributes;
 
 namespace AmalaSpotLocator.Models.ChatModel;
 
@@ -16,7 +16,7 @@ public class TextChatRequest
     public Location? UserLocation { get; set; }
     
     [StringLength(10, ErrorMessage = "Language code cannot exceed 10 characters")]
-    [RegularExpression(@"^[a-z]{2}(-[A-Z]{2})?$", ErrorMessage = "Invalid language code format")]
+    [RegularExpression(@"^[a-z]{2,3}(-[A-Z]{2})?$", ErrorMessage = "Invalid language code format")]
     public string Language { get; set; } = "en";
 }
 
@@ -31,7 +31,7 @@ public class VoiceChatRequest
     public Location? UserLocation { get; set; }
     
     [StringLength(10, ErrorMessage = "Language code cannot exceed 10 characters")]
-    [RegularExpression(@"^[a-z]{2}(-[A-Z]{2})?$", ErrorMessage = "Invalid language code format")]
+    [RegularExpression(@"^[a-z]{2,3}(-[A-Z]{2})?$", ErrorMessage = "Invalid language code format")]
     public string Language { get; set; } = "en";
     
     [StringLength(10, ErrorMessage = "Audio format cannot exceed 10 characters")]

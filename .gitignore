@@ -17,6 +17,7 @@ packages/
 *.tmp
 
 # Secrets
+Documentation
 appsettings.Development.json
 appsettings.json
 *.env

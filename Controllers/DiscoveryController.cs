@@ -9,7 +9,7 @@ using AmalaSpotLocator.Models;
 namespace AmalaSpotLocator.Controllers;
 
 [ApiController]
-[Route("api/discovery")]
+[Route("api/discover")]
 public class DiscoveryController : ControllerBase
 {
     private readonly ISpotDiscoveryService _discoveryService;
@@ -167,7 +167,7 @@ public class DiscoveryController : ControllerBase
         }
     }
 
-    [HttpPost("discover/web-scraping")]
+    [HttpPost("web-scraping")]
     [Authorize(Roles = "Admin,Moderator")]
     public async Task<ActionResult<List<SpotCandidate>>> DiscoverFromWebScraping(CancellationToken cancellationToken = default)
     {
@@ -183,7 +183,7 @@ public class DiscoveryController : ControllerBase
         }
     }
 
-    [HttpPost("discover/google-places")]
+    [HttpPost("google-places")]
     [Authorize(Roles = "Admin,Moderator")]
     public async Task<ActionResult<List<SpotCandidate>>> DiscoverFromGooglePlaces(CancellationToken cancellationToken = default)
     {
@@ -199,7 +199,7 @@ public class DiscoveryController : ControllerBase
         }
     }
 
-    [HttpPost("discover/social-media")]
+    [HttpPost("social-media")]
     [Authorize(Roles = "Admin,Moderator")]
     public async Task<ActionResult<List<SpotCandidate>>> DiscoverFromSocialMedia(CancellationToken cancellationToken = default)
     {

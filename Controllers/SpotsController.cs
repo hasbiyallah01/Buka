@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Swashbuckle.AspNetCore.Annotations;
 using AmalaSpotLocator.Models.SpotModel;
 using AmalaSpotLocator.Models;
+using AmalaSpotLocator.Core.Applications.Services;
 
 namespace AmalaSpotLocator.Controllers;
 
@@ -17,22 +18,22 @@ public class SpotsController : ControllerBase
 {
     private readonly ISpotService _spotService;
     private readonly IGeospatialService _geospatialService;
+    private readonly ISpotMappingService _spotMappingService;
     private readonly ILogger<SpotsController> _logger;
 
     public SpotsController(
         ISpotService spotService,
         IGeospatialService geospatialService,
+        ISpotMappingService spotMappingService,
         ILogger<SpotsController> logger)
     {
         _spotService = spotService;
         _geospatialService = geospatialService;
+        _spotMappingService = spotMappingService;
         _logger = logger;
     }
 
     [HttpGet("nearby")]
-    [ProducesResponseType(typeof(PagedResponse<SpotResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<PagedResponse<SpotResponse>>> GetNearbySpots([FromQuery] LocationQuery query)
     {
         try
@@ -89,9 +90,6 @@ public class SpotsController : ControllerBase
     }
 
     [HttpPost("search")]
-    [ProducesResponseType(typeof(PagedResponse<SpotResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<PagedResponse<SpotResponse>>> SearchSpots([FromBody] SpotSearchRequest request)
     {
         try
@@ -155,9 +153,6 @@ public class SpotsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(SpotResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<SpotResponse>> GetSpotDetails(Guid id)
     {
         try
@@ -183,10 +178,6 @@ public class SpotsController : ControllerBase
 
     [HttpPost]
     [Authorize]
-    [ProducesResponseType(typeof(SpotResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<SpotResponse>> CreateSpot([FromBody] CreateSpotRequest request)
     {
         try
@@ -237,10 +228,6 @@ public class SpotsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [ProducesResponseType(typeof(SpotResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<SpotResponse>> UpdateSpot(Guid id, [FromBody] UpdateSpotRequest request)
     {
         try
@@ -296,9 +283,6 @@ public class SpotsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteSpot(Guid id)
     {
         try
@@ -323,9 +307,6 @@ public class SpotsController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(PagedResponse<SpotResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<PagedResponse<SpotResponse>>> GetAllSpots(
         [FromQuery] int page = 1, 
         [FromQuery] [Range(1, 100)] int pageSize = 20)
@@ -369,9 +350,6 @@ public class SpotsController : ControllerBase
     }
 
     [HttpGet("top-rated")]
-    [ProducesResponseType(typeof(IEnumerable<SpotResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<IEnumerable<SpotResponse>>> GetTopRatedSpots(
         [FromQuery] [Range(1, 50)] int count = 10)
     {
@@ -392,9 +370,6 @@ public class SpotsController : ControllerBase
     }
 
     [HttpGet("recent")]
-    [ProducesResponseType(typeof(IEnumerable<SpotResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<IEnumerable<SpotResponse>>> GetRecentSpots(
         [FromQuery] [Range(1, 50)] int count = 10)
     {

@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using AmalaSpotLocator.Attributes;
+using AmalaSpotLocator.Core.Applications.Attributes;
 
 namespace AmalaSpotLocator.Models.SpotModel;
 

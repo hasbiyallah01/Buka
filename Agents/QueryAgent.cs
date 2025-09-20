@@ -1,7 +1,5 @@
 using AmalaSpotLocator.Interfaces;
 using AmalaSpotLocator.Models.Exceptions;
-using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text.Json;
 using AmalaSpotLocator.Models.UserModel;
@@ -10,6 +8,8 @@ using System.Threading.Tasks;
 using System;
 using AmalaSpotLocator.Models;
 using AmalaSpotLocator.Extensions;
+using AmalaSpotLocator.Core.Applications.Interfaces.Services;
+using AmalaSpotLocator.Core.Applications.Services;
 
 namespace AmalaSpotLocator.Agents;
 
@@ -17,17 +17,23 @@ public class QueryAgent : BaseAgent, IQueryAgent
 {
     private readonly ISpotService _spotService;
     private readonly IGeospatialService _geospatialService;
+    private readonly IBusynessService _busynessService;
+    private readonly IHeatmapService _heatmapService;
     private readonly IMemoryCache _cache;
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(15);
     
     public QueryAgent(
         ISpotService spotService,
         IGeospatialService geospatialService,
+        IBusynessService busynessService,
+        IHeatmapService heatmapService,
         IMemoryCache cache,
         ILogger<QueryAgent> logger) : base(logger)
     {
         _spotService = spotService ?? throw new ArgumentNullException(nameof(spotService));
         _geospatialService = geospatialService ?? throw new ArgumentNullException(nameof(geospatialService));
+        _busynessService = busynessService ?? throw new ArgumentNullException(nameof(busynessService));
+        _heatmapService = heatmapService ?? throw new ArgumentNullException(nameof(heatmapService));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
     
@@ -293,14 +299,8 @@ public class QueryAgent : BaseAgent, IQueryAgent
     {
         if (!preferences.Any())
             return spots;
-        
-        return spots.Where(spot =>
-        {
 
-            return preferences.Any(pref =>
-                spot.Specialties.Any(specialty =>
-                    specialty.Contains(pref, StringComparison.OrdinalIgnoreCase)));
-        });
+        return spots;
     }
     
     private bool IsPriceRelatedTerm(string term)
@@ -341,9 +341,9 @@ public class QueryAgent : BaseAgent, IQueryAgent
         var criteria = new SpotSearchCriteria
         {
             Location = intent.TargetLocation,
-            RadiusKm = intent.MaxDistance ?? 10.0,
+            RadiusKm = intent.MaxDistance ?? 15.0,
             MinRating = intent.MinRating,
-            Limit = 50 // Default limit for performance
+            Limit = 50 
         };
 
         if (intent.MaxBudget.HasValue)
@@ -353,7 +353,6 @@ public class QueryAgent : BaseAgent, IQueryAgent
 
         if (intent.Preferences.Any())
         {
-            // Filter preferences to only include food-related terms, not price terms
             var foodPreferences = intent.Preferences
                 .Where(p => !IsPriceRelatedTerm(p))
                 .ToList();
@@ -385,7 +384,7 @@ public class QueryAgent : BaseAgent, IQueryAgent
         score += normalizedReviewCount * 0.2;
 
         var distance = _geospatialService.CalculateDistanceToSpot(userLocation, spot);
-        var normalizedDistance = Math.Max(0, 1.0 - (distance / 10.0)); // Within 10km gets full points
+        var normalizedDistance = Math.Max(0, 1.0 - (distance / 15.0)); // Within 10km gets full points
         score += normalizedDistance * 0.2;
         
         return score;
@@ -510,4 +509,198 @@ public class QueryAgent : BaseAgent, IQueryAgent
     }
     
     #endregion
+    public async Task<QueryResult> ExecuteBusynessQuery(UserIntent intent)
+    {
+        return await ExecuteWithErrorHandling(
+            async () => await ExecuteBusynessQueryInternal(intent),
+            nameof(ExecuteBusynessQuery),
+            ex => new QueryAgentException($"Failed to get busyness information: {ex.Message}", ex));
+    }
+    
+    public async Task<QueryResult> ExecuteHeatmapQuery(UserIntent intent)
+    {
+        return await ExecuteWithErrorHandling(
+            async () => await ExecuteHeatmapQueryInternal(intent),
+            nameof(ExecuteHeatmapQuery),
+            ex => new QueryAgentException($"Failed to generate heatmap: {ex.Message}", ex));
+    }
+
+    private async Task<QueryResult> ExecuteBusynessQueryInternal(UserIntent intent)
+    {
+        try
+        {
+            Logger.LogInformation("Processing busyness query for intent: {Intent}", intent.Intent);
+            if (intent.Parameters.ContainsKey("spotId") && Guid.TryParse(intent.Parameters["spotId"], out var spotId))
+            {
+                var busyness = await _busynessService.GetCurrentBusynessAsync(spotId);
+                
+                var response = $"Current busyness at this spot: {busyness.Description}\n" +
+                              $"Estimated wait time: {busyness.EstimatedWaitMinutes} minutes\n" +
+                              $"Last updated: {busyness.LastUpdated:HH:mm}";
+
+                if (busyness.Recommendations.Any())
+                {
+                    response += $"\n\nRecommendations:\n• {string.Join("\n• ", busyness.Recommendations)}";
+                }
+
+                return new QueryResult
+                {
+                    Success = true,
+                    Message = response,
+                    Data = busyness,
+                    QueryType = "busyness_check"
+                };
+            }
+            if (intent.Location != null)
+            {
+                var nearbySpots = await _spotService.GetNearbyAsync(intent.Location, 5);
+                var busynessInfo = new List<object>();
+
+                foreach (var spot in nearbySpots.Take(5))
+                {
+                    try
+                    {
+                        var busyness = await _busynessService.GetCurrentBusynessAsync(spot.Id);
+                        var location = _geospatialService.PointToLocation(spot.Location);
+                        
+                        busynessInfo.Add(new
+                        {
+                            SpotName = spot.Name,
+                            BusynessLevel = busyness.CurrentLevel.ToString(),
+                            Description = busyness.Description,
+                            WaitTime = busyness.EstimatedWaitMinutes,
+                            Distance = _geospatialService.CalculateDistance(intent.TargetLocation, location)
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "Failed to get busyness for spot {SpotId}", spot.Id);
+                    }
+                }
+
+                var message = "Here's the current busyness at nearby amala spots:\n\n";
+                foreach (dynamic info in busynessInfo)
+                {
+                    message += $"📍 {info.SpotName} ({info.Distance:F1}km away)\n";
+                    message += $"   Status: {info.Description}\n";
+                    message += $"   Wait time: ~{info.WaitTime} minutes\n\n";
+                }
+
+                return new QueryResult
+                {
+                    Success = true,
+                    Message = message.TrimEnd(),
+                    Data = busynessInfo,
+                    QueryType = "area_busyness"
+                };
+            }
+
+            return new QueryResult
+            {
+                Success = false,
+                Message = "Please provide a location or specific spot to check busyness levels.",
+                QueryType = "busyness_error"
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing busyness query");
+            throw;
+        }
+    }
+
+    private async Task<QueryResult> ExecuteHeatmapQueryInternal(UserIntent intent)
+    {
+        try
+        {
+            Logger.LogInformation("Processing heatmap query for intent: {Intent}", intent.Intent);
+            if (intent.Intent.ToLowerInvariant().Contains("business") || 
+                intent.Intent.ToLowerInvariant().Contains("opportunity") ||
+                intent.Intent.ToLowerInvariant().Contains("invest"))
+            {
+                var opportunities = await _heatmapService.GetBusinessOpportunitiesAsync();
+                
+                var message = "🚀 Top Business Opportunities for Amala Spots in Lagos:\n\n";
+                foreach (var opp in opportunities.Take(5))
+                {
+                    message += $"📍 {opp.AreaName}\n";
+                    message += $"   Opportunity Score: {opp.OpportunityScore:F0}/100\n";
+                    message += $"   Investment: {opp.RecommendedInvestment}\n";
+                    message += $"   Expected ROI: {opp.EstimatedROI}\n";
+                    message += $"   Competition: {opp.CompetitionLevel}\n\n";
+                }
+
+                return new QueryResult
+                {
+                    Success = true,
+                    Message = message.TrimEnd(),
+                    Data = opportunities,
+                    QueryType = "business_opportunities"
+                };
+            }
+            if (intent.Intent.ToLowerInvariant().Contains("underserved") || 
+                intent.Intent.ToLowerInvariant().Contains("no amala") ||
+                intent.Intent.ToLowerInvariant().Contains("few spots"))
+            {
+                var underserved = await _heatmapService.IdentifyUnderservedAreasAsync();
+                
+                var message = "🎯 Underserved Areas in Lagos (Great for New Amala Spots):\n\n";
+                foreach (var area in underserved.Take(5))
+                {
+                    message += $"📍 {area.AreaName}\n";
+                    message += $"   Population: {area.Population:N0}\n";
+                    message += $"   Current spots: {area.CurrentSpotCount}\n";
+                    message += $"   Spots per 100k people: {area.SpotsPerCapita:F1}\n";
+                    message += $"   Severity: {area.Severity}\n\n";
+                }
+
+                return new QueryResult
+                {
+                    Success = true,
+                    Message = message.TrimEnd(),
+                    Data = underserved,
+                    QueryType = "underserved_areas"
+                };
+            }
+            var heatmap = await _heatmapService.GenerateLagosAmalaHeatmapAsync();
+            
+            var hotspots = heatmap.Points
+                .Where(p => p.Category >= HeatmapCategory.High)
+                .OrderByDescending(p => p.Intensity)
+                .Take(5)
+                .ToList();
+
+            var response = $"🗺️ Lagos Amala Heatmap Analysis:\n\n";
+            response += $"📊 Total amala spots: {heatmap.TotalSpots}\n";
+            response += $"📈 Average density: {heatmap.AverageIntensity:F1}/100\n";
+            response += $"🔥 Hotspots found: {hotspots.Count}\n";
+            response += $"🎯 Underserved areas: {heatmap.UnderservedAreas.Count}\n\n";
+
+            if (hotspots.Any())
+            {
+                response += "🔥 Top Amala Hotspots:\n";
+                foreach (var hotspot in hotspots)
+                {
+                    response += $"• {hotspot.SpotCount} spots in {hotspot.Radius}km radius\n";
+                    response += $"  Intensity: {hotspot.Intensity:F0}/100\n";
+                }
+                response += "\n";
+            }
+
+            response += $"💡 {heatmap.Summary}";
+
+            return new QueryResult
+            {
+                Success = true,
+                Message = response,
+                Data = heatmap,
+                QueryType = "heatmap_analysis"
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing heatmap query");
+            throw;
+        }
+    }
 }

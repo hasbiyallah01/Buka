@@ -39,10 +39,6 @@ public class ChatController : ControllerBase
     }
 
     [HttpPost("text")]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status429TooManyRequests)]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ChatResponse>> ProcessTextMessage([FromBody] TextChatRequest request)
     {
         try
@@ -129,10 +125,6 @@ public class ChatController : ControllerBase
 
     [HttpPost("voice")]
     [Consumes("multipart/form-data")]
-    [ProducesResponseType(typeof(VoiceChatResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status429TooManyRequests)]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<VoiceChatResponse>> ProcessVoiceMessage([FromForm] VoiceChatRequest request)
     {
         try
@@ -254,9 +246,6 @@ public class ChatController : ControllerBase
     }
 
     [HttpGet("session/{sessionId}")]
-    [ProducesResponseType(typeof(ChatSession), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ChatSession>> GetSession(string sessionId)
     {
         try
@@ -277,8 +266,6 @@ public class ChatController : ControllerBase
     }
 
     [HttpPost("session")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult> CreateSession()
     {
         try

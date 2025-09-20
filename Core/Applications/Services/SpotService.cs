@@ -15,17 +15,20 @@ public class SpotService : ISpotService
     private readonly AmalaSpotContext _context;
     private readonly IGeospatialService _geospatialService;
     private readonly IGoogleMapsService _googleMapsService;
+    private readonly IBusynessService _busynessService;
     private readonly ILogger<SpotService> _logger;
 
     public SpotService(
         AmalaSpotContext context, 
         IGeospatialService geospatialService,
         IGoogleMapsService googleMapsService,
+        IBusynessService busynessService,
         ILogger<SpotService> logger)
     {
         _context = context;
         _geospatialService = geospatialService;
         _googleMapsService = googleMapsService;
+        _busynessService = busynessService;
         _logger = logger;
     }
 
@@ -228,157 +231,154 @@ public class SpotService : ISpotService
     {
         try
         {
-            var localSpots = new List<AmalaSpot>();
-            var query = _context.AmalaSpots.AsQueryable();
-
-            // Apply basic filters to the query
-            if (criteria.Location != null && criteria.RadiusKm.HasValue)
-            {
-                var centerPoint = _geospatialService.LocationToPoint(criteria.Location);
-                var radiusMeters = criteria.RadiusKm.Value * 1000;
-                query = query.Where(s => s.Location.Distance(centerPoint) <= radiusMeters);
-            }
-
-            if (criteria.MinPriceRange.HasValue)
-            {
-                query = query.Where(s => s.PriceRange >= criteria.MinPriceRange.Value);
-            }
-            if (criteria.MaxPriceRange.HasValue)
-            {
-                query = query.Where(s => s.PriceRange <= criteria.MaxPriceRange.Value);
-            }
-
-            if (criteria.MinRating.HasValue)
-            {
-                query = query.Where(s => s.AverageRating >= criteria.MinRating.Value);
-            }
-
-            if (criteria.CurrentTime.HasValue)
-            {
-                query = query.Where(s => s.OpeningTime.HasValue && s.ClosingTime.HasValue &&
-                                        s.OpeningTime <= criteria.CurrentTime && s.ClosingTime >= criteria.CurrentTime);
-            }
-
-            if (criteria.IsVerified.HasValue)
-            {
-                query = query.Where(s => s.IsVerified == criteria.IsVerified.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(criteria.SearchTerm))
-            {
-                var searchTerm = criteria.SearchTerm.ToLower();
-                query = query.Where(s => s.Name.ToLower().Contains(searchTerm) ||
-                                        s.Description != null && s.Description.ToLower().Contains(searchTerm) ||
-                                        s.Address.ToLower().Contains(searchTerm));
-            }
-
-            // Get local spots from database
-            localSpots = (await query.ToListAsync()).ToList();
-
-            // Add real-time Google Places search if location is provided
+            var allSpots = new List<AmalaSpot>();
             if (criteria.Location != null)
             {
                 try
                 {
-                    _logger.LogInformation("Searching Google Places for amala spots near {Lat}, {Lng} with radius {RadiusKm}km", 
+                    _logger.LogInformation("Searching Google Maps for amala spots near {Lat}, {Lng} within {Radius}km", 
                         criteria.Location.Latitude, criteria.Location.Longitude, criteria.RadiusKm ?? 5);
 
                     var radiusMeters = (criteria.RadiusKm ?? 5) * 1000;
-                    var googlePlaces = await _googleMapsService.SearchPlacesAsync(
-                        criteria.Location, 
-                        radiusMeters, 
-                        "amala restaurant");
 
-                    _logger.LogInformation("Google Places API returned {Count} results", googlePlaces.Count());
-
-                    foreach (var place in googlePlaces.Take(10)) // Limit to 10 results
+                    var searchQueries = new[]
                     {
-                        _logger.LogDebug("Processing Google Place: {Name} (ID: {PlaceId})", place.Name, place.PlaceId);
-                        
-                        var placeDetails = await _googleMapsService.GetPlaceDetailsAsync(place.PlaceId);
-                        if (placeDetails != null)
-                        {
-                            // Convert Google Place to AmalaSpot
-                            var googleSpot = new AmalaSpot
-                            {
-                                Id = Guid.NewGuid(),
-                                Name = placeDetails.Name,
-                                Address = placeDetails.FormattedAddress,
-                                Location = new Point(placeDetails.Location.Longitude, placeDetails.Location.Latitude) { SRID = 4326 },
-                                PhoneNumber = placeDetails.FormattedPhoneNumber,
-                                AverageRating = (decimal)(placeDetails.Rating ?? 0),
-                                ReviewCount = placeDetails.UserRatingsTotal ?? 0,
-                                PriceRange = placeDetails.PriceLevel ?? PriceRange.Budget,
-                                Specialties = ExtractSpecialtiesFromGooglePlace(placeDetails),
-                                IsVerified = false,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
-                            };
+                        "amala restaurant Nigerian food",
+                        "buka Nigerian restaurant amala",
+                        "mama put amala gbegiri ewedu",
+                        "Nigerian restaurant yoruba food",
+                        "African restaurant amala abula",
+                        "local restaurant Nigerian cuisine",
+                        "traditional Nigerian food restaurant"
+                    };
 
-                            // Check if this spot already exists in local results
-                            if (!localSpots.Any(s => s.Name.Equals(googleSpot.Name, StringComparison.OrdinalIgnoreCase) &&
-                                                    s.Location.Distance(googleSpot.Location) < 100)) // Within 100 meters
-                            {
-                                localSpots.Add(googleSpot);
-                                _logger.LogDebug("Added Google Place to results: {Name}", googleSpot.Name);
-                            }
-                            else
-                            {
-                                _logger.LogDebug("Skipped duplicate Google Place: {Name}", googleSpot.Name);
-                            }
-                        }
-                        else
+                    var googlePlaces = await _googleMapsService.SearchPlacesWithMultipleQueriesAsync(
+                        criteria.Location,
+                        radiusMeters,
+                        searchQueries
+                    );
+
+                    _logger.LogInformation("Found {Count} places from Google Maps", googlePlaces.Count());
+
+                    foreach (var place in googlePlaces.Take(50)) // Increase limit for better results
+                    {
+                        var distanceKm = _geospatialService.CalculateDistance(criteria.Location, place.Location);
+                        if (distanceKm > (criteria.RadiusKm ?? 5)) continue;
+
+                        var placeDetails = await _googleMapsService.GetPlaceDetailsAsync(place.PlaceId);
+                        if (placeDetails == null || !IsRelevantAmalaRestaurant(placeDetails)) continue;
+
+                        var googleSpot = new AmalaSpot
                         {
-                            _logger.LogWarning("Failed to get details for Google Place ID: {PlaceId}", place.PlaceId);
+                            Id = Guid.NewGuid(),
+                            Name = placeDetails.Name,
+                            Address = placeDetails.FormattedAddress,
+                            Location = new Point(placeDetails.Location.Longitude, placeDetails.Location.Latitude) { SRID = 4326 },
+                            PhoneNumber = placeDetails.FormattedPhoneNumber,
+                            AverageRating = (decimal)(placeDetails.Rating ?? 0),
+                            ReviewCount = placeDetails.UserRatingsTotal ?? 0,
+                            PriceRange = placeDetails.PriceLevel ?? PriceRange.Budget,
+                            Specialties = ExtractSpecialtiesFromGooglePlace(placeDetails),
+                            IsVerified = false,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        if (!allSpots.Any(s => s.Name.Equals(googleSpot.Name, StringComparison.OrdinalIgnoreCase) &&
+                                                 s.Location.Distance(googleSpot.Location) < 100))
+                        {
+                            allSpots.Add(googleSpot);
+                            _logger.LogDebug("Added Google Place to results: {Name} with specialties: {Specialties}", 
+                                googleSpot.Name, string.Join(", ", googleSpot.Specialties));
                         }
                     }
 
-                    var googleSpotsCount = localSpots.Count(s => s.CreatedAt > DateTime.UtcNow.AddMinutes(-1));
-                    _logger.LogInformation("Successfully added {Count} new spots from Google Places", googleSpotsCount);
+                    _logger.LogInformation("Added {Count} relevant spots from Google Maps", allSpots.Count);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to search Google Places: {Error}", ex.Message);
+                    _logger.LogInformation("Falling back to database search due to Google Maps error");
+                    var query = _context.AmalaSpots.AsQueryable();
+                    if (criteria.Location != null && criteria.RadiusKm.HasValue)
+                    {
+                        var centerPoint = _geospatialService.LocationToPoint(criteria.Location);
+                        var radiusMeters = criteria.RadiusKm.Value * 1000;
+                        query = query.Where(s => s.Location.Distance(centerPoint) <= radiusMeters);
+                    }
+                    allSpots.AddRange(await query.Take(20).ToListAsync());
                 }
-            }
-
-            // Apply final filtering and sorting
-            var finalResults = localSpots.AsEnumerable();
-
-            // Apply specialty filtering if needed
-            if (criteria.Specialties != null && criteria.Specialties.Any())
-            {
-                finalResults = finalResults.Where(s => criteria.Specialties.Any(specialty => 
-                    s.Specialties.Any(spotSpecialty => spotSpecialty.Contains(specialty, StringComparison.OrdinalIgnoreCase))));
-            }
-
-            // Apply additional filters
-            if (criteria.MinRating.HasValue)
-            {
-                finalResults = finalResults.Where(s => s.AverageRating >= criteria.MinRating.Value);
-            }
-
-            if (criteria.MaxPriceRange.HasValue)
-            {
-                finalResults = finalResults.Where(s => s.PriceRange <= criteria.MaxPriceRange.Value);
-            }
-
-            // Sort by distance if location provided, otherwise by rating
-            if (criteria.Location != null)
-            {
-                var centerPoint = _geospatialService.LocationToPoint(criteria.Location);
-                finalResults = finalResults.OrderBy(s => {
-                    var distance = s.Location.Distance(centerPoint);
-                    return double.IsInfinity(distance) || double.IsNaN(distance) ? double.MaxValue : distance;
-                }).ThenByDescending(s => s.AverageRating);
             }
             else
             {
-                finalResults = finalResults.OrderByDescending(s => s.AverageRating)
-                                         .ThenByDescending(s => s.ReviewCount);
+                _logger.LogInformation("No location provided, getting spots from database");
+                allSpots.AddRange(await _context.AmalaSpots.Take(20).ToListAsync());
             }
+            foreach (var spot in allSpots)
+            {
+                spot.Specialties = spot.Specialties
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Trim().ToLowerInvariant())
+                    .Distinct()
+                    .ToList();
+            }
+            var finalResults = allSpots.AsEnumerable();
+            if (criteria.Specialties != null && criteria.Specialties.Any())
+            {
+                var searchTerms = criteria.Specialties
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Trim().ToLowerInvariant())
+                    .ToList();
 
-            return finalResults.Skip(criteria.Offset).Take(criteria.Limit).ToList();
+                _logger.LogDebug("Filtering by search terms: {Terms}", string.Join(", ", searchTerms));
+                finalResults = finalResults.Where(spot =>
+                {
+                    var spotSpecialties = spot.Specialties.Select(s => s.ToLowerInvariant()).ToList();
+                    if (searchTerms.Any(term => spotSpecialties.Any(specialty => specialty.Contains(term))))
+                    {
+                        return true;
+                    }
+                    if (searchTerms.Contains("amala") && 
+                        spotSpecialties.Any(s => s.Contains("nigerian") || s.Contains("yoruba") || s.Contains("local") || s.Contains("traditional")))
+                    {
+                        return true;
+                    }
+                    var nigerianFoodTerms = new[] { "amala", "gbegiri", "ewedu", "abula", "jollof", "suya", "pepper soup" };
+                    if (searchTerms.Any(term => nigerianFoodTerms.Contains(term)) &&
+                        spotSpecialties.Any(s => s.Contains("nigerian") || s.Contains("african") || s.Contains("amala")))
+                    {
+                        return true;
+                    }
+                    
+                    return false;
+                });
+                
+                _logger.LogDebug("After specialty filtering: {Count} spots remain", finalResults.Count());
+            }
+            if (criteria.MinRating.HasValue && criteria.MinRating.Value > 0)
+            {
+                var adjustedMinRating = Math.Max(0, criteria.MinRating.Value - 1);
+                finalResults = finalResults.Where(s => s.AverageRating >= adjustedMinRating);
+                _logger.LogDebug("Applied rating filter: original {Original}, adjusted {Adjusted}", 
+                    criteria.MinRating.Value, adjustedMinRating);
+            }
+            if (criteria.MaxPriceRange.HasValue)
+                finalResults = finalResults.Where(s => s.PriceRange <= criteria.MaxPriceRange.Value);
+            if (criteria.Location != null)
+            {
+                var centerPoint = _geospatialService.LocationToPoint(criteria.Location);
+                finalResults = finalResults
+                    .OrderBy(s => s.Location.Distance(centerPoint))
+                    .ThenByDescending(s => s.AverageRating);
+            }
+            else
+            {
+                finalResults = finalResults
+                    .OrderByDescending(s => s.AverageRating)
+                    .ThenByDescending(s => s.ReviewCount);
+            }
+            var finalList = finalResults.Skip(criteria.Offset).Take(criteria.Limit).ToList();
+            _logger.LogInformation("Returning {Count} spots after all filtering and pagination", finalList.Count);
+            return finalList;
         }
         catch (Exception ex)
         {
@@ -387,23 +387,188 @@ public class SpotService : ISpotService
         }
     }
 
+
+    private bool IsRelevantAmalaRestaurant(PlaceDetails place)
+    {
+        try
+        {
+            var relevantTerms = new[] { 
+                "amala", "gbegiri", "ewedu", "abula", "yoruba", "nigerian", "african", "lagos", "nigeria",
+                "buka", "mama put", "mama's place", "local food", "traditional", "indigenous",
+                "ewa agoyin", "pounded yam", "fufu", "jollof", "suya", "pepper soup", "kitchen"
+            };
+            var irrelevantTerms = new[] { 
+                "indian", "gujarati", "ahmedabad", "mumbai", "delhi", "bangalore", "punjabi", "hindi",
+                "chinese", "japanese", "korean", "thai", "vietnamese", "italian", "french", "mexican",
+                "pizza", "burger", "kfc", "mcdonald"
+            };
+            var textToCheck = $"{place.Name} {place.FormattedAddress} {string.Join(" ", place.Reviews?.Select(r => r.Text) ?? new string[0])}".ToLowerInvariant();
+            
+            _logger.LogDebug("Checking restaurant: {Name} at {Address}", place.Name, place.FormattedAddress);
+            _logger.LogDebug("Text to check: {Text}", textToCheck.Substring(0, Math.Min(200, textToCheck.Length)));
+            if (irrelevantTerms.Any(term => textToCheck.Contains(term)))
+            {
+                _logger.LogDebug("Rejected {Name} - contains irrelevant terms", place.Name);
+                return false;
+            }
+            var isRestaurant = place.Types?.Any(type => 
+                type.Contains("restaurant") || 
+                type.Contains("food") || 
+                type.Contains("meal_takeaway") ||
+                type.Contains("establishment")) ?? true; // Default to true if no types
+                
+            if (!isRestaurant)
+            {
+                _logger.LogDebug("Rejected {Name} - not a restaurant type", place.Name);
+                return false;
+            }
+            var hasRelevantTerms = relevantTerms.Any(term => textToCheck.Contains(term));
+            var isInNigeriaArea = textToCheck.Contains("nigeria") || textToCheck.Contains("lagos") || 
+                                 textToCheck.Contains("abuja") || textToCheck.Contains("ibadan") ||
+                                 textToCheck.Contains("kano") || textToCheck.Contains("port harcourt");
+            
+            var isRelevant = hasRelevantTerms || isInNigeriaArea;
+            
+            if (isRelevant)
+            {
+                _logger.LogDebug("Accepted {Name} - hasRelevantTerms: {HasTerms}, isInNigeriaArea: {IsInArea}", 
+                    place.Name, hasRelevantTerms, isInNigeriaArea);
+            }
+            else
+            {
+                _logger.LogDebug("Rejected {Name} - no relevant terms or Nigeria location", place.Name);
+            }
+            
+            return isRelevant;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking restaurant relevance for {Name}", place.Name);
+            return true; // Default to including it if there's an error
+        }
+    }
+
+    private IEnumerable<string> ExtractFoodTermsFromCriteria(string criteria)
+    {
+        var priceWords = new[] { 
+            "cheap", "expensive", "budget", "affordable", "costly", "pricey", "inexpensive",
+            "cheap", "pass", "cost", "much", "small", "money", "big", "well",
+            "owo", "kekere", "gbowo", "nla", "pupọ", "die"
+        };
+        
+        var foodTerms = new List<string>();
+        var words = criteria.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach (var word in words)
+        {
+            var cleanWord = word.Trim().ToLowerInvariant();
+            if (!priceWords.Contains(cleanWord) && cleanWord.Length > 2)
+            {
+                var mappedTerm = MapFoodTerm(cleanWord);
+                if (!string.IsNullOrEmpty(mappedTerm))
+                {
+                    foodTerms.Add(mappedTerm);
+                }
+            }
+        }
+        if (!foodTerms.Any())
+        {
+            var mappedCriteria = MapFoodTerm(criteria.ToLowerInvariant());
+            return !string.IsNullOrEmpty(mappedCriteria) ? new[] { mappedCriteria } : new[] { criteria };
+        }
+        
+        return foodTerms.Distinct();
+    }
+
+    private string MapFoodTerm(string term)
+    {
+        var foodMappings = new Dictionary<string, string>
+        {
+            { "amala", "amala" },
+            { "gbegiri", "gbegiri" },
+            { "ewedu", "ewedu" },
+            { "abula", "abula" },
+            { "obe", "stew" },
+            { "stew", "stew" },
+            { "soup", "soup" },
+            { "buka", "amala" },
+            { "mama", "amala" }, // mama put
+            { "put", "amala" },
+            { "local", "amala" },
+            { "traditional", "amala" },
+            { "nigerian", "amala" },
+            { "yoruba", "amala" },
+            { "ounje", "amala" }, // food
+            { "ile", "amala" }, // house/place (ile ounje = restaurant)
+            { "dun", "amala" }, // sweet/delicious
+            { "dara", "amala" }, // good
+            { "food", "amala" },
+            { "restaurant", "amala" },
+            { "spot", "amala" },
+            { "place", "amala" },
+            { "joint", "amala" }
+        };
+
+        return foodMappings.TryGetValue(term, out var mapped) ? mapped : 
+               (term.Length > 2 && !IsCommonWord(term) ? term : string.Empty);
+    }
+
+    private bool IsCommonWord(string word)
+    {
+        var commonWords = new[] { 
+            "the", "and", "for", "are", "but", "not", "you", "all", "can", "had", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "its", "may", "new", "now", "old", "see", "two", "way", "who", "boy", "did", "man", "men", "put", "say", "she", "too", "use",
+            "dey", "wey", "for", "dis", "dat", "dem", "una", "abi", "sha", "sef",
+            "ni", "ti", "si", "ko", "lo", "wa", "ri", "se", "le", "mo", "to", "bi"
+        };
+        return commonWords.Contains(word);
+    }
+
     private List<string> ExtractSpecialtiesFromGooglePlace(PlaceDetails place)
     {
         var specialties = new List<string>();
-        var amalaTerms = new[] { "amala", "gbegiri", "ewedu", "abula", "stew", "soup", "yoruba", "nigerian" };
-
-        // Check name and reviews for amala-related terms
+        var foodTerms = new Dictionary<string, string>
+        {
+            { "amala", "Amala" },
+            { "gbegiri", "Gbegiri" },
+            { "ewedu", "Ewedu" },
+            { "abula", "Abula" },
+            { "ewa agoyin", "Ewa Agoyin" },
+            { "pounded yam", "Pounded Yam" },
+            { "fufu", "Fufu" },
+            { "jollof", "Jollof Rice" },
+            { "pepper soup", "Pepper Soup" },
+            { "suya", "Suya" },
+            { "moi moi", "Moi Moi" },
+            { "akara", "Akara" },
+            { "plantain", "Plantain" },
+            { "rice and stew", "Rice and Stew" },
+            { "nigerian", "Nigerian Cuisine" },
+            { "yoruba", "Yoruba Cuisine" },
+            { "local food", "Local Nigerian Food" },
+            { "traditional", "Traditional Nigerian" }
+        };
         var textToCheck = $"{place.Name} {string.Join(" ", place.Reviews.Select(r => r.Text))}".ToLowerInvariant();
         
-        foreach (var term in amalaTerms)
+        foreach (var (searchTerm, displayName) in foodTerms)
         {
-            if (textToCheck.Contains(term) && !specialties.Contains(term, StringComparer.OrdinalIgnoreCase))
+            if (textToCheck.Contains(searchTerm) && !specialties.Contains(displayName, StringComparer.OrdinalIgnoreCase))
             {
-                specialties.Add(char.ToUpper(term[0]) + term.Substring(1)); // Capitalize first letter
+                specialties.Add(displayName);
+            }
+        }
+        if (!specialties.Any())
+        {
+            if (textToCheck.Contains("buka") || textToCheck.Contains("mama put"))
+            {
+                specialties.AddRange(new[] { "Amala", "Rice and Stew", "Local Nigerian Food" });
+            }
+            else
+            {
+                specialties.Add("Amala"); // Default assumption since we're searching for amala spots
             }
         }
 
-        return specialties.Any() ? specialties : new List<string> { "Amala" }; // Default to Amala if found through search
+        return specialties;
     }
 
     #endregion

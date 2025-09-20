@@ -7,7 +7,7 @@ namespace AmalaSpotLocator.Interfaces;
 
 public interface INLUAgent
 {
-    Task<UserIntent> ExtractIntent(string userMessage, string? sessionId = null, Location? userLocation = null);
-    Task<UserIntent> ExtractIntentFromVoice(byte[] audioData, string? sessionId = null, Location? userLocation = null);
+    Task<UserIntent> ExtractIntent(string userMessage, string? sessionId = null, Location? userLocation = null, string? language = null);
+    Task<UserIntent> ExtractIntentFromVoice(byte[] audioData, string? sessionId = null, Location? userLocation = null, string? language = null);
     Task<bool> ValidateIntent(UserIntent intent);
 }

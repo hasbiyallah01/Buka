@@ -265,8 +265,8 @@ public class ResponseAgent : BaseAgent, IResponseAgent
 
         var messages = language switch
         {
-            "pidgin" => GetPidginMessages(),
-            "yoruba" => GetYorubaMessages(),
+            "pcm" => GetPidginMessages(),
+            "yo" => GetYorubaMessages(),
             _ => GetEnglishMessages()
         };
         
@@ -345,14 +345,14 @@ public class ResponseAgent : BaseAgent, IResponseAgent
     {
         return language switch
         {
-            "pidgin" => priceRange switch
+            "pcm" => priceRange switch
             {
                 PriceRange.Budget => "Cheap (Under ₦1000)",
                 PriceRange.Moderate => "Moderate (₦1000 - ₦2500)",
                 PriceRange.Expensive => "Expensive (Above ₦2500)",
                 _ => "Price no dey clear"
             },
-            "yoruba" => priceRange switch
+            "yo" => priceRange switch
             {
                 PriceRange.Budget => "Poku (Kere ju ₦1000)",
                 PriceRange.Moderate => "Iwontunwonsi (₦1000 - ₦2500)",
@@ -399,14 +399,14 @@ public class ResponseAgent : BaseAgent, IResponseAgent
                 Encouragements = new[] { "You're welcome!", "Happy to help!", "Enjoy your meal!" },
                 Transitions = new[] { "Here's what I found:", "Let me show you:", "Check this out:" }
             },
-            ["pidgin"] = new CulturalResponseTemplates
+            ["pcm"] = new CulturalResponseTemplates
             {
                 Greetings = new[] { "How far!", "Wetin dey happen!", "How you dey!" },
                 Expressions = new[] { "E choke!", "Na so!", "Correct!", "Sharp sharp!" },
                 Encouragements = new[] { "You welcome o!", "I dey for you!", "Chop belleful!" },
                 Transitions = new[] { "See wetin I find for you:", "Make I show you:", "Check am:" }
             },
-            ["yoruba"] = new CulturalResponseTemplates
+            ["yo"] = new CulturalResponseTemplates
             {
                 Greetings = new[] { "Bawo!", "Pele o!", "Eku aaro!" },
                 Expressions = new[] { "O dara!", "Alafia!", "Gan-an!", "Bẹẹni!" },
@@ -454,14 +454,14 @@ public class ResponseAgent : BaseAgent, IResponseAgent
         
         return language switch
         {
-            "pidgin" => hour switch
+            "pcm" => hour switch
             {
                 >= 5 and < 12 => "Good morning o!",
                 >= 12 and < 17 => "Good afternoon!",
                 >= 17 and < 21 => "Good evening!",
                 _ => "How you dey!"
             },
-            "yoruba" => hour switch
+            "yo" => hour switch
             {
                 >= 5 and < 12 => "Eku aaro!",
                 >= 12 and < 17 => "Eku osan!",
@@ -491,8 +491,8 @@ public class ResponseAgent : BaseAgent, IResponseAgent
 
         var intro = language switch
         {
-            "pidgin" => "🏪 Na dis place be:",
-            "yoruba" => "🏪 Ibi yii ni:",
+            "pcm" => "🏪 Na dis place be:",
+            "yo" => "🏪 Ibi yii ni:",
             _ => "🏪 Here's a great spot:"
         };
         
