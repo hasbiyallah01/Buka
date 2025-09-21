@@ -4,7 +4,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using AmalaSpotLocator.Data;
 using AmalaSpotLocator.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -13,6 +12,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using AmalaSpotLocator.Models;
 using Microsoft.Extensions.Configuration;
+using AmalaSpotLocator.Infrastructure;
 
 namespace AmalaSpotLocator.Core.Applications.Services;
 
@@ -295,7 +295,7 @@ public class AuthenticationService : IAuthenticationService
                 ValidIssuer = _configuration["JWT:Issuer"],
                 ValidateAudience = true,
                 ValidAudience = _configuration["JWT:Audience"],
-                ValidateLifetime = false // Don't validate lifetime for refresh
+                ValidateLifetime = false 
             }, out SecurityToken validatedToken);
 
             return principal;

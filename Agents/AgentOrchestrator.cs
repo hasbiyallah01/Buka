@@ -364,7 +364,7 @@ public class AgentOrchestrator : BaseAgent, IAgentOrchestrator
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error during conversation context cleanup");
-                await Task.Delay(TimeSpan.FromMinutes(1)); // Shorter delay on error
+                await Task.Delay(TimeSpan.FromMinutes(1)); 
             }
         }
     }

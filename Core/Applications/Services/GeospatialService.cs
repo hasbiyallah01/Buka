@@ -1,4 +1,4 @@
-﻿using AmalaSpotLocator.Data;
+﻿using AmalaSpotLocator.Infrastructure;
 using AmalaSpotLocator.Interfaces;
 using System.Collections.Generic;
 using AmalaSpotLocator.Models.MapModel;
@@ -11,6 +11,9 @@ using System.Threading.Tasks;
 using Location = AmalaSpotLocator.Models.Location;
 using AmalaSpotLocator.Models;
 using Microsoft.Extensions.Configuration;
+using GoogleApi.Entities.Search.Common;
+using NetTopologySuite;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace AmalaSpotLocator.Core.Applications.Services;
 
@@ -19,18 +22,20 @@ public class GeospatialService : IGeospatialService
     private readonly AmalaSpotContext _context;
     private readonly IConfiguration _configuration;
     private readonly string _googleApiKey;
+    private readonly IGoogleMapsService _googleMapsService;
 
     private const double NigeriaMinLat = 4.0;
     private const double NigeriaMaxLat = 14.0;
     private const double NigeriaMinLng = 2.5;
     private const double NigeriaMaxLng = 15.0;
 
-    public GeospatialService(AmalaSpotContext context, IConfiguration configuration)
+    public GeospatialService(AmalaSpotContext context, IConfiguration configuration, IGoogleMapsService googleMapsService)
     {
         _context = context;
         _configuration = configuration;
-        _googleApiKey = _configuration["GoogleMaps:ApiKey"] ?? 
+        _googleApiKey = _configuration["GoogleMaps:ApiKey"] ??
             throw new InvalidOperationException("Google Maps API key not configured");
+        _googleMapsService = googleMapsService;
     }
 
     public async Task<Location?> GeocodeAddressAsync(string address)
@@ -38,7 +43,7 @@ public class GeospatialService : IGeospatialService
         try
         {
 
-            await Task.Delay(10); // Simulate API call delay
+            await Task.Delay(10); 
 
             var normalizedAddress = address.ToLowerInvariant();
             
@@ -66,22 +71,74 @@ public class GeospatialService : IGeospatialService
         var centerPoint = LocationToPoint(center);
         var radiusMeters = radiusKm * 1000;
 
-        var spots = await _context.AmalaSpots
-            .Where(s => s.Location.Distance(centerPoint) <= radiusMeters)
-            .OrderBy(s => s.Location.Distance(centerPoint))
-            .Take(limit)
-            .ToListAsync();
+        var result = await _googleMapsService.SearchPlacesAsync(center, radiusKm);
 
-        return spots;
+        var results = new List<PlaceCandidate>();
+
+        var amalaSpots = new List<AmalaSpot>();
+
+        if (results.Count > 0)
+        {
+            var existingData = await _context.AmalaSpots
+                .AsNoTracking()
+                .Select(s => new { s.Name, s.Address })
+                .ToListAsync();
+
+            var existingNames = existingData
+                .Select(x => x.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var newResults = results
+                .Where(r => !existingNames.Contains(r.Name))
+                .ToList();
+
+            if (newResults.Any())
+            {
+
+                foreach (var candidate in newResults)
+                {
+                    var spot = GoogleMapsService.ToAmalaSpot(candidate);
+
+                    var details = await _googleMapsService.GetPlaceDetailsAsync(candidate.PlaceId);
+
+                    if (details != null)
+                    {
+                        spot.PhoneNumber = details.FormattedPhoneNumber ?? null;
+
+                        var todayHours = details.OpeningHours?.FirstOrDefault();
+                        spot.OpeningTime = todayHours?.OpenTime ?? new TimeSpan(10, 0, 0);
+                        spot.ClosingTime = todayHours?.CloseTime ?? new TimeSpan(17, 0, 0);
+                    }
+                    else
+                    {
+                        spot.PhoneNumber = "N/A";
+                        spot.OpeningTime = new TimeSpan(10, 0, 0);
+                        spot.ClosingTime = new TimeSpan(17, 0, 0);
+                    }
+
+                    amalaSpots.Add(spot);
+                }
+            }
+        }
+
+        return amalaSpots;
     }
 
     public async Task<IEnumerable<AmalaSpot>> FindSpotsInBounds(MapBounds bounds, SpotSearchCriteria? criteria = null)
     {
         var query = _context.AmalaSpots.AsNoTracking().AsQueryable();
 
+        var factory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+
+        double swLat = bounds.SouthWestLat;
+        double swLng = bounds.SouthWestLng;
+        double neLat = bounds.NorthEastLat;
+        double neLng = bounds.NorthEastLng;
+
         query = query.Where(s =>
-            s.Location.Y >= bounds.SouthWestLat && s.Location.Y <= bounds.NorthEastLat &&
-            s.Location.X >= bounds.SouthWestLng && s.Location.X <= bounds.NorthEastLng);
+            s.Location.Y >= swLat && s.Location.Y <= neLat &&
+            s.Location.X >= swLng && s.Location.X <= neLng
+        );
 
         if (criteria != null)
         {
@@ -96,6 +153,7 @@ public class GeospatialService : IGeospatialService
 
             if (criteria.IsVerified.HasValue)
                 query = query.Where(s => s.IsVerified == criteria.IsVerified.Value);
+
             if (criteria.CurrentTime.HasValue)
             {
                 var currentTime = criteria.CurrentTime.Value;
@@ -107,26 +165,26 @@ public class GeospatialService : IGeospatialService
                         ||
                         (s.OpeningTime.Value > s.ClosingTime.Value &&
                          (currentTime >= s.OpeningTime.Value || currentTime <= s.ClosingTime.Value))
-                    ));
+                    )
+                );
             }
-            List<AmalaSpot> spots = await query.ToListAsync();
-            
-            if (criteria.Specialties?.Any() == true)
-            {
-                spots = spots.Where(s => criteria.Specialties.Any(specialty => 
-                    s.Specialties.Contains(specialty, StringComparer.OrdinalIgnoreCase))).ToList();
-            }
-
-            if (criteria.Limit > 0)
-                spots = spots.Take(criteria.Limit).ToList();
-                
-            return spots;
         }
 
-        return await query.ToListAsync();
+        var spots = await query.ToListAsync();
+
+        if (criteria?.Specialties?.Any() == true)
+        {
+            spots = spots.Where(s => criteria.Specialties.Any(spec =>
+                s.Specialties.Contains(spec, StringComparer.OrdinalIgnoreCase)
+            )).ToList();
+        }
+
+        
+        if (criteria?.Limit > 0)
+            spots = spots.Take(criteria.Limit).ToList();
+
+        return spots;
     }
-
-
     public double CalculateDistance(Location point1, Location point2)
     {
 
@@ -203,13 +261,13 @@ public class GeospatialService : IGeospatialService
         var boundsDistance = bounds.GetDiagonalDistanceKm();
         var spotDensity = spotCount / Math.Max(1, boundsDistance);
 
-        if (boundsDistance < 1) return 18; // Very small area
-        if (boundsDistance < 5) return 15; // Neighborhood level
-        if (boundsDistance < 20) return 13; // City district level
-        if (boundsDistance < 50) return 11; // City level
-        if (boundsDistance < 200) return 9; // Metropolitan area
+        if (boundsDistance < 1) return 18; 
+        if (boundsDistance < 5) return 15; 
+        if (boundsDistance < 20) return 13; 
+        if (boundsDistance < 50) return 11; 
+        if (boundsDistance < 200) return 9; 
         
-        return 7; // State/region level
+        return 7; 
     }
 
     public bool IsLocationInNigeria(Location location)
@@ -223,17 +281,17 @@ public class GeospatialService : IGeospatialService
         try
         {
 
-            await Task.Delay(50); // Simulate API call delay
+            await Task.Delay(50); 
 
             var candidates = new List<PlaceCandidate>();
 
             if (IsLocationInNigeria(center))
             {
-                var random = new Random(center.GetHashCode()); // Deterministic based on location
+                var random = new Random(center.GetHashCode()); 
                 
                 for (int i = 0; i < Math.Min(10, (int)(radiusKm * 2)); i++)
                 {
-                    var offsetLat = (random.NextDouble() - 0.5) * (radiusKm / 111.0); // Rough km to degree conversion
+                    var offsetLat = (random.NextDouble() - 0.5) * (radiusKm / 111.0); 
                     var offsetLng = (random.NextDouble() - 0.5) * (radiusKm / 111.0);
                     
                     var candidateLocation = new Location(
@@ -267,47 +325,6 @@ public class GeospatialService : IGeospatialService
         }
     }
 
-    public async Task<PlaceDetails?> GetPlaceDetailsAsync(string placeId)
-    {
-        try
-        {
-
-            await Task.Delay(30); // Simulate API call delay
-
-            if (string.IsNullOrEmpty(placeId) || !placeId.StartsWith("place_"))
-                return null;
-
-            var random = new Random(placeId.GetHashCode());
-            
-            return new PlaceDetails
-            {
-                PlaceId = placeId,
-                Name = "Sample Amala Restaurant",
-                FormattedAddress = "123 Sample Street, Lagos, Nigeria",
-                Location = new Location(6.5244 + (random.NextDouble() - 0.5) * 0.1, 3.3792 + (random.NextDouble() - 0.5) * 0.1),
-                FormattedPhoneNumber = "+234 801 234 5678",
-                Website = "https://example.com",
-                Rating = (decimal)(3.0 + random.NextDouble() * 2.0),
-                UserRatingsTotal = random.Next(50, 500),
-                PriceLevel = (PriceRange)random.Next(1, 4),
-                OpeningHours = new List<PlaceOpeningHours>
-                {
-                    new PlaceOpeningHours { DayOfWeek = 1, OpenTime = new TimeSpan(8, 0, 0), CloseTime = new TimeSpan(22, 0, 0) },
-                    new PlaceOpeningHours { DayOfWeek = 2, OpenTime = new TimeSpan(8, 0, 0), CloseTime = new TimeSpan(22, 0, 0) }
-                },
-                Reviews = new List<PlaceReview>
-                {
-                    new PlaceReview { AuthorName = "John D.", Rating = 5, Text = "Great amala!", Time = DateTime.UtcNow.AddDays(-10) }
-                },
-                Photos = new List<string> { "photo_ref_1", "photo_ref_2" },
-                Types = new List<string> { "restaurant", "food", "establishment" }
-            };
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to get place details for {placeId}", ex);
-        }
-    }
 
     public Location PointToLocation(Point point)
     {

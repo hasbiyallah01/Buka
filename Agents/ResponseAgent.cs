@@ -115,7 +115,7 @@ public class ResponseAgent : BaseAgent, IResponseAgent
             {
                 var formattedSpot = FormatSpotWithCulturalFlair(spot, intent.Language, userLocation);
                 response.AppendLine(formattedSpot);
-                response.AppendLine(); // Add spacing between spots
+                response.AppendLine(); 
             }
             
             if (result.Spots.Count > 5)
@@ -372,7 +372,7 @@ public class ResponseAgent : BaseAgent, IResponseAgent
     private double CalculateDistance(Location loc1, Location loc2)
     {
 
-        const double R = 6371; // Earth's radius in kilometers
+        const double R = 6371; 
         
         var lat1Rad = loc1.Latitude * Math.PI / 180;
         var lat2Rad = loc2.Latitude * Math.PI / 180;

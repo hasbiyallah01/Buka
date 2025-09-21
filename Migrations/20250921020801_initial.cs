@@ -6,10 +6,10 @@ using NetTopologySuite.Geometries;
 
 namespace AmalaSpotLocator.Migrations
 {
-
-    public partial class InitialCreate : Migration
+    
+    public partial class initial : Migration
     {
-
+        
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
@@ -102,6 +102,43 @@ namespace AmalaSpotLocator.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "SpotCandidates",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    Address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    Location = table.Column<Point>(type: "geography (point)", nullable: true),
+                    PhoneNumber = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    OpeningTime = table.Column<TimeSpan>(type: "interval", nullable: true),
+                    ClosingTime = table.Column<TimeSpan>(type: "interval", nullable: true),
+                    ConfidenceScore = table.Column<double>(type: "numeric(3,2)", nullable: false),
+                    QualityScore = table.Column<double>(type: "numeric(3,2)", nullable: false),
+                    EstimatedPriceRange = table.Column<int>(type: "integer", nullable: false),
+                    Specialties = table.Column<string>(type: "jsonb", nullable: false),
+                    Source = table.Column<int>(type: "integer", nullable: false),
+                    SourceUrl = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    SourceData = table.Column<string>(type: "jsonb", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    VerificationNotes = table.Column<string>(type: "text", nullable: true),
+                    ExistingSpotId = table.Column<Guid>(type: "uuid", nullable: true),
+                    DiscoveredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    VerifiedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ProcessedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SpotCandidates", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SpotCandidates_AmalaSpots_ExistingSpotId",
+                        column: x => x.ExistingSpotId,
+                        principalTable: "AmalaSpots",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AmalaSpots_AverageRating",
                 table: "AmalaSpots",
@@ -160,6 +197,42 @@ namespace AmalaSpotLocator.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_SpotCandidates_ConfidenceScore",
+                table: "SpotCandidates",
+                column: "ConfidenceScore");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SpotCandidates_DiscoveredAt",
+                table: "SpotCandidates",
+                column: "DiscoveredAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SpotCandidates_ExistingSpotId",
+                table: "SpotCandidates",
+                column: "ExistingSpotId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SpotCandidates_Location",
+                table: "SpotCandidates",
+                column: "Location")
+                .Annotation("Npgsql:IndexMethod", "gist");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SpotCandidates_QualityScore",
+                table: "SpotCandidates",
+                column: "QualityScore");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SpotCandidates_Source",
+                table: "SpotCandidates",
+                column: "Source");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SpotCandidates_Status",
+                table: "SpotCandidates",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_CreatedAt",
                 table: "Users",
                 column: "CreatedAt");
@@ -176,10 +249,14 @@ namespace AmalaSpotLocator.Migrations
                 column: "IsActive");
         }
 
+        
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
                 name: "Reviews");
+
+            migrationBuilder.DropTable(
+                name: "SpotCandidates");
 
             migrationBuilder.DropTable(
                 name: "AmalaSpots");

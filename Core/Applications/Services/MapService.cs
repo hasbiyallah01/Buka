@@ -86,7 +86,7 @@ public class MapService : IMapService
             {
                 Center = center,
                 ZoomLevel = request.ZoomLevel,
-                Markers = response.Markers.Take(10).ToList() // Limit markers for URL generation
+                Markers = response.Markers.Take(10).ToList() 
             };
 
             response.StaticMapUrl = _geospatialService.GenerateStaticMapUrl(urlRequest);
@@ -167,11 +167,11 @@ public class MapService : IMapService
         
         return spot.AverageRating switch
         {
-            >= 4.5m => "green",    // Excellent
-            >= 4.0m => "blue",     // Very good
-            >= 3.5m => "yellow",   // Good
-            >= 3.0m => "orange",   // Average
-            _ => "red"             // Below average
+            >= 4.5m => "green",    
+            >= 4.0m => "blue",     
+            >= 3.5m => "yellow",   
+            >= 3.0m => "orange",   
+            _ => "red"             
         };
     }
 
@@ -208,8 +208,8 @@ public class MapService : IMapService
     private bool ShouldApplyClustering(int spotCount, int zoomLevel)
     {
 
-        if (spotCount < 5) return false; // Too few spots to cluster
-        if (zoomLevel >= 16) return false; // Too zoomed in for clustering
+        if (spotCount < 5) return false; 
+        if (zoomLevel >= 16) return false; 
 
         var clusterThreshold = Math.Max(10, 50 - zoomLevel * 2);
         return spotCount >= clusterThreshold;

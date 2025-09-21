@@ -24,12 +24,7 @@ public class ChatController : ControllerBase
     private readonly IVoiceProcessingService _voiceProcessingService;
     private readonly ILogger<ChatController> _logger;
     
-    public ChatController(
-        IAgentOrchestrator orchestrator,
-        IChatSessionService sessionService,
-        IRateLimitingService rateLimitingService,
-        IVoiceProcessingService voiceProcessingService,
-        ILogger<ChatController> logger)
+    public ChatController( IAgentOrchestrator orchestrator, IChatSessionService sessionService,IRateLimitingService rateLimitingService,IVoiceProcessingService voiceProcessingService,ILogger<ChatController> logger)
     {
         _orchestrator = orchestrator;
         _sessionService = sessionService;

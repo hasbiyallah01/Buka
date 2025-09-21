@@ -7,8 +7,6 @@ public interface ICandidateExtractionService
 
     Task<List<SpotCandidate>> ExtractFromGooglePlacesAsync(CancellationToken cancellationToken = default);
 
-    Task<List<SpotCandidate>> ExtractFromSocialMediaAsync(CancellationToken cancellationToken = default);
-
     Task<SpotCandidate> ProcessCandidateAsync(SpotCandidate candidate, CancellationToken cancellationToken = default);
 
     Task<ValidationResult> ValidateCandidateAsync(SpotCandidate candidate, CancellationToken cancellationToken = default);

@@ -50,7 +50,7 @@ public class RequestValidationMiddleware
 
     private bool ValidateRequestSize(HttpContext context)
     {
-        const long maxRequestSize = 10 * 1024 * 1024; // 10MB
+        const long maxRequestSize = 10 * 1024 * 1024; 
         
         if (context.Request.ContentLength.HasValue && 
             context.Request.ContentLength.Value > maxRequestSize)

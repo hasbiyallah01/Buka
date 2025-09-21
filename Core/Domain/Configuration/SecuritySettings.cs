@@ -34,7 +34,7 @@ public class CorsSettings
 
 public class ValidationSettings
 {
-    public int MaxRequestSizeBytes { get; set; } = 10 * 1024 * 1024; // 10MB
+    public int MaxRequestSizeBytes { get; set; } = 10 * 1024 * 1024; 
     public int MaxMessageLength { get; set; } = 1000;
     public int MaxUrlLength { get; set; } = 2048;
     public int MaxHeaderLength { get; set; } = 500;

@@ -60,9 +60,9 @@ public class AmalaSpot
 
 public enum PriceRange
 {
-    Free = 0,        // Free
-    Budget = 1,      // Under ₦1000
-    Moderate = 2,    // ₦1000 - ₦2500
-    Expensive = 3,   // ₦2500 - ₦5000
-    VeryExpensive = 4 // Above ₦5000
+    Free = 0,        
+    Budget = 1,      
+    Moderate = 2,    
+    Expensive = 3,   
+    VeryExpensive = 4 
 }

@@ -373,7 +373,7 @@ public class WebScrapingService : IWebScrapingService
                 PhoneNumber = ExtractPhoneFromLine(line),
                 Source = DiscoverySource.WebScraping,
                 SourceUrl = sourceUrl,
-                ConfidenceScore = 0.4 // Lower confidence for text extraction
+                ConfidenceScore = 0.4 
             };
 
             if (!string.IsNullOrWhiteSpace(candidate.Name))

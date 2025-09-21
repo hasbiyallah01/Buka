@@ -34,13 +34,13 @@ public class HeatmapService : IHeatmapService
             _logger.LogInformation("Generating Lagos Amala heatmap");
 
             var heatmapPoints = new List<HeatmapPoint>();
-            var gridSize = 0.02; // Approximately 2km grid
+            var gridSize = 0.02; 
             for (double lat = _lagosNorthWest.Latitude; lat >= _lagosSouthEast.Latitude; lat -= gridSize)
             {
                 for (double lng = _lagosNorthWest.Longitude; lng <= _lagosSouthEast.Longitude; lng += gridSize)
                 {
                     var gridLocation = new Location(lat, lng);
-                    var density = await GetAreaDensityAsync(gridLocation, 1.5); // 1.5km radius
+                    var density = await GetAreaDensityAsync(gridLocation, 1.5); 
                     
                     if (density.Intensity > 0)
                     {
@@ -79,7 +79,7 @@ public class HeatmapService : IHeatmapService
         try
         {
             var underservedAreas = new List<UnderservedArea>();
-            var gridSize = 0.05; // Larger grid for underserved area analysis
+            var gridSize = 0.05; 
             var populationCenters = new[]
             {
                 new { Location = new Location(6.5244, 3.3792), Name = "Victoria Island", Population = 500000 },
@@ -94,10 +94,10 @@ public class HeatmapService : IHeatmapService
 
             foreach (var center in populationCenters)
             {
-                var density = await GetAreaDensityAsync(center.Location, 3); // 3km radius
-                var spotsPerCapita = density.SpotCount / (double)center.Population * 100000; // Spots per 100k people
+                var density = await GetAreaDensityAsync(center.Location, 3); 
+                var spotsPerCapita = density.SpotCount / (double)center.Population * 100000; 
 
-                if (spotsPerCapita < 5) // Less than 5 spots per 100k people
+                if (spotsPerCapita < 5) 
                 {
                     underservedAreas.Add(new UnderservedArea
                     {
@@ -106,7 +106,7 @@ public class HeatmapService : IHeatmapService
                         Population = center.Population,
                         CurrentSpotCount = density.SpotCount,
                         SpotsPerCapita = spotsPerCapita,
-                        RecommendedSpots = Math.Max(1, (int)(center.Population / 50000)), // 1 spot per 50k people
+                        RecommendedSpots = Math.Max(1, (int)(center.Population / 50000)), 
                         Severity = CalculateSeverity(spotsPerCapita),
                         Reasons = GenerateUnderservedReasons(center.Name, spotsPerCapita, density.SpotCount)
                     });
@@ -184,14 +184,14 @@ public class HeatmapService : IHeatmapService
             var opportunities = new List<BusinessOpportunity>();
             var underservedAreas = await IdentifyUnderservedAreasAsync();
 
-            foreach (var area in underservedAreas.Take(10)) // Top 10 opportunities
+            foreach (var area in underservedAreas.Take(10)) 
             {
                 var opportunity = new BusinessOpportunity
                 {
                     Location = area.Location,
                     AreaName = area.AreaName,
                     OpportunityScore = CalculateOpportunityScore(area),
-                    EstimatedDemand = area.Population / 25000, // 1 spot per 25k people for good coverage
+                    EstimatedDemand = area.Population / 25000, 
                     CompetitionLevel = GetCompetitionLevel(area.CurrentSpotCount, area.Population),
                     RecommendedInvestment = CalculateInvestment(area.Population, area.Severity),
                     Reasons = new List<string>
@@ -269,9 +269,9 @@ public class HeatmapService : IHeatmapService
 
     private double CalculateOpportunityScore(UnderservedArea area)
     {
-        var populationScore = Math.Min(50, area.Population / 10000.0); // Max 50 points
-        var scarcityScore = Math.Max(0, 30 - area.SpotsPerCapita * 6); // Max 30 points
-        var severityScore = (int)area.Severity * 5; // Max 20 points
+        var populationScore = Math.Min(50, area.Population / 10000.0); 
+        var scarcityScore = Math.Max(0, 30 - area.SpotsPerCapita * 6); 
+        var severityScore = (int)area.Severity * 5; 
         
         return populationScore + scarcityScore + severityScore;
     }
@@ -293,10 +293,10 @@ public class HeatmapService : IHeatmapService
     {
         var baseAmount = severity switch
         {
-            UnderservedSeverity.Critical => 2000000, // ₦2M
-            UnderservedSeverity.High => 1500000,     // ₦1.5M
-            UnderservedSeverity.Medium => 1000000,   // ₦1M
-            _ => 800000                              // ₦800K
+            UnderservedSeverity.Critical => 2000000, 
+            UnderservedSeverity.High => 1500000,     
+            UnderservedSeverity.Medium => 1000000,   
+            _ => 800000                              
         };
 
         var populationFactor = population > 500000 ? 1.3 : 1.0;
@@ -547,7 +547,7 @@ public class HeatmapService : IHeatmapService
         var coldspots = new List<HeatmapColdspot>();
         if (request.CenterLocation != null)
         {
-            var gridSize = 0.02; // ~2km
+            var gridSize = 0.02; 
             for (double lat = request.CenterLocation.Latitude - 0.1; lat <= request.CenterLocation.Latitude + 0.1; lat += gridSize)
             {
                 for (double lng = request.CenterLocation.Longitude - 0.1; lng <= request.CenterLocation.Longitude + 0.1; lng += gridSize)
@@ -633,7 +633,7 @@ public class HeatmapService : IHeatmapService
 
             var spotsPerCapita = nearbyPlaces.Count / (double)center.Population * 100000;
 
-            if (spotsPerCapita < 5) // Less than 5 spots per 100k people
+            if (spotsPerCapita < 5) 
             {
                 underservedAreas.Add(new UnderservedArea
                 {
@@ -715,7 +715,7 @@ public class HeatmapService : IHeatmapService
 
     private int EstimatePopulation(Location location)
     {
-        return 50000; // Default estimate
+        return 50000; 
     }
 
     private string GetAreaName(Location location)
@@ -725,6 +725,6 @@ public class HeatmapService : IHeatmapService
 
     private double CalculateOpportunityScore(Location location)
     {
-        return 60.0; // Default score
+        return 60.0; 
     }
 }

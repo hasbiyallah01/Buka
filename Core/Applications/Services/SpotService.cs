@@ -1,4 +1,4 @@
-using AmalaSpotLocator.Data;
+using AmalaSpotLocator.Infrastructure;
 using AmalaSpotLocator.Interfaces;
 using System.Collections.Generic;
 using AmalaSpotLocator.Models.SpotModel;
@@ -260,7 +260,7 @@ public class SpotService : ISpotService
 
                     _logger.LogInformation("Found {Count} places from Google Maps", googlePlaces.Count());
 
-                    foreach (var place in googlePlaces.Take(50)) // Increase limit for better results
+                    foreach (var place in googlePlaces.Take(50)) 
                     {
                         var distanceKm = _geospatialService.CalculateDistance(criteria.Location, place.Location);
                         if (distanceKm > (criteria.RadiusKm ?? 5)) continue;
@@ -415,7 +415,7 @@ public class SpotService : ISpotService
                 type.Contains("restaurant") || 
                 type.Contains("food") || 
                 type.Contains("meal_takeaway") ||
-                type.Contains("establishment")) ?? true; // Default to true if no types
+                type.Contains("establishment")) ?? true; 
                 
             if (!isRestaurant)
             {
@@ -444,7 +444,7 @@ public class SpotService : ISpotService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking restaurant relevance for {Name}", place.Name);
-            return true; // Default to including it if there's an error
+            return true; 
         }
     }
 
@@ -492,16 +492,16 @@ public class SpotService : ISpotService
             { "stew", "stew" },
             { "soup", "soup" },
             { "buka", "amala" },
-            { "mama", "amala" }, // mama put
+            { "mama", "amala" }, 
             { "put", "amala" },
             { "local", "amala" },
             { "traditional", "amala" },
             { "nigerian", "amala" },
             { "yoruba", "amala" },
-            { "ounje", "amala" }, // food
-            { "ile", "amala" }, // house/place (ile ounje = restaurant)
-            { "dun", "amala" }, // sweet/delicious
-            { "dara", "amala" }, // good
+            { "ounje", "amala" }, 
+            { "ile", "amala" }, 
+            { "dun", "amala" }, 
+            { "dara", "amala" }, 
             { "food", "amala" },
             { "restaurant", "amala" },
             { "spot", "amala" },
@@ -564,7 +564,7 @@ public class SpotService : ISpotService
             }
             else
             {
-                specialties.Add("Amala"); // Default assumption since we're searching for amala spots
+                specialties.Add("Amala"); 
             }
         }
 
@@ -714,7 +714,7 @@ public class SpotService : ISpotService
         try
         {
             var point = _geospatialService.LocationToPoint(location);
-            const double minDistanceMeters = 50; // 50 meters minimum distance
+            const double minDistanceMeters = 50; 
 
             var query = _context.AmalaSpots
                 .Where(s => s.Location.Distance(point) <= minDistanceMeters);

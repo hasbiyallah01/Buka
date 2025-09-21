@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using AmalaSpotLocator.Data;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using AmalaSpotLocator.Models;
+using AmalaSpotLocator.Infrastructure;
 
 namespace AmalaSpotLocator.Core.Applications.Services;
 
@@ -109,12 +109,12 @@ public class DataValidationService : IDataValidationService
     public async Task<bool> ValidatePhoneNumber(string phoneNumber)
     {
         if (string.IsNullOrWhiteSpace(phoneNumber))
-            return true; // Optional field
+            return true; 
 
         var patterns = new[]
         {
-            @"^\+234[789][01]\d{8}$", // International format
-            @"^0[789][01]\d{8}$"      // Local format
+            @"^\+234[789][01]\d{8}$", 
+            @"^0[789][01]\d{8}$"      
         };
 
         return await Task.FromResult(patterns.Any(pattern => 

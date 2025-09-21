@@ -9,6 +9,6 @@ public class MapClusterData
     public decimal AverageRating { get; set; }
     public PriceRange? DominantPriceRange { get; set; }
     public List<Guid> SpotIds { get; set; } = new();
-    public string ClusterColor { get; set; } = "#4ECDC4"; // Default teal color
-    public int ClusterSize { get; set; } // For visual sizing
+    public string ClusterColor { get; set; } = "#4ECDC4"; 
+    public int ClusterSize { get; set; } 
 }

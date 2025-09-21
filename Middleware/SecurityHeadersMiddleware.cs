@@ -27,7 +27,8 @@ public class SecurityHeadersMiddleware
                   "frame-ancestors 'none'; " +
                   "base-uri 'self'; " +
                   "form-action 'self'";
-        
+
+
         context.Response.Headers.Append("Content-Security-Policy", csp);
 
         if (!context.Request.Host.Host.Contains("localhost"))

@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using AmalaSpotLocator.Data;
+using AmalaSpotLocator.Infrastructure;
 using AmalaSpotLocator.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -45,7 +45,7 @@ public class ReviewService : IReviewService
                 UserId = request.UserId,
                 Rating = request.Rating,
                 Comment = request.Comment,
-                IsModerated = !isSpam, // Auto-approve non-spam reviews
+                IsModerated = !isSpam, 
                 IsHidden = isSpam
             };
 
@@ -130,7 +130,7 @@ public class ReviewService : IReviewService
             review.Rating = request.Rating;
             review.Comment = request.Comment;
             review.UpdatedAt = DateTime.UtcNow;
-            review.IsModerated = !isSpam; // Re-moderate if spam detected
+            review.IsModerated = !isSpam; 
             review.IsHidden = isSpam;
 
             await _context.SaveChangesAsync();
@@ -290,7 +290,7 @@ public class ReviewService : IReviewService
             if (review == null)
                 return false;
 
-            review.IsModerated = false; // Mark for re-moderation
+            review.IsModerated = false; 
             await _context.SaveChangesAsync();
 
             _logger.LogWarning("Review {ReviewId} reported by user {ReporterId}: {Reason}", 
@@ -333,7 +333,7 @@ public class ReviewService : IReviewService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking for spam in comment");
-            return false; // Default to not spam if error occurs
+            return false; 
         }
     }
 

@@ -1,4 +1,4 @@
-@AmalaSpotLocator_HostAddress = http://localhost:5164
+@AmalaSpotLocator_HostAddress = http:
 
 GET {{AmalaSpotLocator_HostAddress}}/weatherforecast/
 Accept: application/json

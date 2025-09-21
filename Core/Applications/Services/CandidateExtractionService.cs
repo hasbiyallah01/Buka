@@ -103,23 +103,6 @@ public class CandidateExtractionService : ICandidateExtractionService
         return candidates;
     }
 
-    public async Task<List<SpotCandidate>> ExtractFromSocialMediaAsync(CancellationToken cancellationToken = default)
-    {
-        var candidates = new List<SpotCandidate>();
-
-        if (!_settings.SocialMedia.Enabled)
-        {
-            _logger.LogInformation("Social media extraction is disabled");
-            return candidates;
-        }
-
-        
-        _logger.LogInformation("Social media extraction is not yet implemented");
-
-
-        return candidates;
-    }
-
     public async Task<SpotCandidate> ProcessCandidateAsync(SpotCandidate candidate, CancellationToken cancellationToken = default)
     {
         try
@@ -240,7 +223,7 @@ public class CandidateExtractionService : ICandidateExtractionService
                             Latitude = candidate.Location.Y, 
                             Longitude = candidate.Location.X 
                         },
-                        100, // 100 meter radius
+                        100, 
                         "restaurant");
 
                     var matchingPlace = nearbyPlaces.FirstOrDefault(p => 
@@ -416,7 +399,7 @@ public class CandidateExtractionService : ICandidateExtractionService
         var specialties = new List<string>();
         var amalaTerms = new[] { "amala", "gbegiri", "ewedu", "abula", "stew", "soup" };
 
-        foreach (var review in reviews.Take(10)) // Check first 10 reviews
+        foreach (var review in reviews.Take(10)) 
         {
             var reviewText = review.Text.ToLowerInvariant();
             foreach (var term in amalaTerms)

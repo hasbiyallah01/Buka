@@ -1,4 +1,4 @@
-using AmalaSpotLocator.Core.Applications.Interfaces.Services;
+﻿/*using AmalaSpotLocator.Core.Applications.Interfaces.Services;
 using AmalaSpotLocator.Core.Domain.Entities;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
@@ -109,10 +109,10 @@ public class DiscoveryController : ControllerBase
             var userId = userIdClaim != null ? Guid.Parse(userIdClaim.Value) : (Guid?)null;
 
             var spot = await _discoveryService.ApproveCandidateAsync(candidateId, userId, cancellationToken);
-            
-            _logger.LogInformation("Candidate {CandidateId} approved by user {UserId}, created spot {SpotId}", 
+
+            _logger.LogInformation("Candidate {CandidateId} approved by user {UserId}, created spot {SpotId}",
                 candidateId, userId, spot.Id);
-            
+
             return Ok(spot);
         }
         catch (ArgumentException ex)
@@ -146,10 +146,10 @@ public class DiscoveryController : ControllerBase
             var userId = userIdClaim != null ? Guid.Parse(userIdClaim.Value) : (Guid?)null;
 
             await _discoveryService.RejectCandidateAsync(candidateId, request.Reason, userId, cancellationToken);
-            
-            _logger.LogInformation("Candidate {CandidateId} rejected by user {UserId} with reason: {Reason}", 
+
+            _logger.LogInformation("Candidate {CandidateId} rejected by user {UserId} with reason: {Reason}",
                 candidateId, userId, request.Reason);
-            
+
             return Ok(new { message = "Candidate rejected successfully" });
         }
         catch (ArgumentException ex)
@@ -219,4 +219,4 @@ public class DiscoveryController : ControllerBase
 public class RejectCandidateRequest
 {
     public string Reason { get; set; } = string.Empty;
-}
+}*/

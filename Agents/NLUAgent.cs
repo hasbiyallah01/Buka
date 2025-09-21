@@ -154,7 +154,7 @@ public class NLUAgent : BaseAgent, INLUAgent
             return false;
         }
         
-        await Task.CompletedTask; // Placeholder for async validation
+        await Task.CompletedTask; 
         return true;
     }
     
@@ -269,11 +269,11 @@ public class NLUAgent : BaseAgent, INLUAgent
 
         if (cheapTerms.Any(term => lowerMessage.Contains(term)))
         {
-            intent.MaxBudget = 1000; // Budget range
+            intent.MaxBudget = 1000; 
         }
         else if (expensiveTerms.Any(term => lowerMessage.Contains(term)))
         {
-            intent.MaxBudget = null; // No budget limit
+            intent.MaxBudget = null; 
         }
         var goodTerms = new[] { 
             "good", "best", "quality", "nice", "fine",
@@ -309,11 +309,11 @@ public class NLUAgent : BaseAgent, INLUAgent
 
         if (veryCloseTerms.Any(term => lowerMessage.Contains(term)))
         {
-            intent.MaxDistance = 1.0; // 1km
+            intent.MaxDistance = 1.0; 
         }
         else if (nearbyTerms.Any(term => lowerMessage.Contains(term)))
         {
-            intent.MaxDistance = 5.0; // 5km
+            intent.MaxDistance = 5.0; 
         }
         var spicyTerms = new[] { 
             "spicy", "hot", "pepper", "peppery",

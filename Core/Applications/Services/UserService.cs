@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using AmalaSpotLocator.Data;
+using AmalaSpotLocator.Infrastructure;
 using System.Collections.Generic;
 using AmalaSpotLocator.Core.Applications.Interfaces.Services;
 using AmalaSpotLocator.Models;

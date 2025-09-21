@@ -1,6 +1,6 @@
 ﻿
 using System;
-using AmalaSpotLocator.Data;
+using AmalaSpotLocator.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -13,10 +13,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AmalaSpotLocator.Migrations
 {
     [DbContext(typeof(AmalaSpotContext))]
-    [Migration("20250912140643_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250921020801_initial")]
+    partial class initial
     {
-
+        
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
@@ -26,6 +26,102 @@ namespace AmalaSpotLocator.Migrations
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("AmalaSpotLocator.Core.Domain.Entities.SpotCandidate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<TimeSpan?>("ClosingTime")
+                        .HasColumnType("interval");
+
+                    b.Property<double>("ConfidenceScore")
+                        .HasColumnType("decimal(3,2)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("DiscoveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EstimatedPriceRange")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ExistingSpotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geography (point)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<TimeSpan?>("OpeningTime")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("QualityScore")
+                        .HasColumnType("decimal(3,2)");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceData")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Specialties")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VerificationNotes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConfidenceScore");
+
+                    b.HasIndex("DiscoveredAt");
+
+                    b.HasIndex("ExistingSpotId");
+
+                    b.HasIndex("Location");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "gist");
+
+                    b.HasIndex("QualityScore");
+
+                    b.HasIndex("Source");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("SpotCandidates");
+                });
 
             modelBuilder.Entity("AmalaSpotLocator.Models.AmalaSpot", b =>
                 {
@@ -220,6 +316,16 @@ namespace AmalaSpotLocator.Migrations
                     b.HasIndex("IsActive");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("AmalaSpotLocator.Core.Domain.Entities.SpotCandidate", b =>
+                {
+                    b.HasOne("AmalaSpotLocator.Models.AmalaSpot", "ExistingSpot")
+                        .WithMany()
+                        .HasForeignKey("ExistingSpotId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ExistingSpot");
                 });
 
             modelBuilder.Entity("AmalaSpotLocator.Models.AmalaSpot", b =>

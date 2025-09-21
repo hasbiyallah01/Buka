@@ -30,10 +30,10 @@ public class BusynessInfo
     public int EstimatedWaitMinutes { get; set; }
     public DateTime LastUpdated { get; set; }
     public BusynessSource Source { get; set; }
-    public int? PopularityScore { get; set; } // 0-100 from Google Places
+    public int? PopularityScore { get; set; } 
     public List<HourlyBusyness> WeeklyPattern { get; set; } = new();
-    public int CheckInCount { get; set; } // Crowd-sourced check-ins
-    public List<string> Recommendations { get; set; } = new(); // Alternative suggestions
+    public int CheckInCount { get; set; } 
+    public List<string> Recommendations { get; set; } = new(); 
 }
 
 public enum BusynessSource
@@ -47,8 +47,8 @@ public enum BusynessSource
 public class HourlyBusyness
 {
     public DayOfWeek DayOfWeek { get; set; }
-    public int Hour { get; set; } // 0-23
-    public int BusynessPercentage { get; set; } // 0-100
+    public int Hour { get; set; } 
+    public int BusynessPercentage { get; set; } 
     public BusynessLevel Level { get; set; }
 }
 

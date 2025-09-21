@@ -384,7 +384,7 @@ public class QueryAgent : BaseAgent, IQueryAgent
         score += normalizedReviewCount * 0.2;
 
         var distance = _geospatialService.CalculateDistanceToSpot(userLocation, spot);
-        var normalizedDistance = Math.Max(0, 1.0 - (distance / 15.0)); // Within 10km gets full points
+        var normalizedDistance = Math.Max(0, 1.0 - (distance / 15.0)); 
         score += normalizedDistance * 0.2;
         
         return score;
@@ -503,7 +503,7 @@ public class QueryAgent : BaseAgent, IQueryAgent
         
         result.Metadata["queryType"] = "recent_reviews";
         
-        _cache.Set(cacheKey, result, TimeSpan.FromMinutes(5)); // Shorter cache for recent reviews
+        _cache.Set(cacheKey, result, TimeSpan.FromMinutes(5)); 
         
         return result;
     }

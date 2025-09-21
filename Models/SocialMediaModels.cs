@@ -7,7 +7,7 @@ public class HashtagSearchRequest
     [Required]
     public string Hashtag { get; set; } = string.Empty;
     
-    public string Platform { get; set; } = "all"; // twitter, instagram, tiktok, all
+    public string Platform { get; set; } = "all"; 
     
     public int MaxResults { get; set; } = 20;
     
@@ -33,8 +33,8 @@ public class SocialMediaPost
     public string? VideoUrl { get; set; }
     public string? Location { get; set; }
     public string PostUrl { get; set; } = string.Empty;
-    public double SentimentScore { get; set; } // -1 to 1
-    public string SentimentLabel { get; set; } = "neutral"; // positive, negative, neutral
+    public double SentimentScore { get; set; } 
+    public string SentimentLabel { get; set; } = "neutral"; 
 }
 
 public class HashtagSearchResponse
@@ -60,14 +60,14 @@ public class TrendingHashtag
     public string Hashtag { get; set; } = string.Empty;
     public int PostCount { get; set; }
     public double GrowthRate { get; set; }
-    public string Category { get; set; } = string.Empty; // food, restaurant, location
+    public string Category { get; set; } = string.Empty; 
 }
 
 public class PopularPost
 {
     public SocialMediaPost Post { get; set; } = new();
     public double PopularityScore { get; set; }
-    public string PopularityReason { get; set; } = string.Empty; // viral, high_engagement, trending
+    public string PopularityReason { get; set; } = string.Empty; 
 }
 public class RedditSearchResponse
 {

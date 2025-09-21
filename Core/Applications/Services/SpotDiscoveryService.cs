@@ -1,7 +1,7 @@
 using AmalaSpotLocator.Configuration;
 using AmalaSpotLocator.Core.Applications.Interfaces.Services;
 using AmalaSpotLocator.Core.Domain.Entities;
-using AmalaSpotLocator.Data;
+using AmalaSpotLocator.Infrastructure;
 using AmalaSpotLocator.Interfaces;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
@@ -20,15 +20,9 @@ public class SpotDiscoveryService : ISpotDiscoveryService
     private readonly ISpotService _spotService;
     private readonly IGeospatialService _geospatialService;
     private readonly ILogger<SpotDiscoveryService> _logger;
+    private readonly ISocialMediaService _socialMediaService;
 
-    public SpotDiscoveryService(
-        AmalaSpotContext context,
-        IOptions<DiscoverySettings> settings,
-        IWebScrapingService webScrapingService,
-        ICandidateExtractionService candidateExtractionService,
-        ISpotService spotService,
-        IGeospatialService geospatialService,
-        ILogger<SpotDiscoveryService> logger)
+    public SpotDiscoveryService(AmalaSpotContext context,IOptions<DiscoverySettings> settings,IWebScrapingService webScrapingService, ICandidateExtractionService candidateExtractionService,ISpotService spotService, IGeospatialService geospatialService, ILogger<SpotDiscoveryService> logger,ISocialMediaService socialMediaService)
     {
         _context = context;
         _settings = settings.Value;
@@ -37,6 +31,7 @@ public class SpotDiscoveryService : ISpotDiscoveryService
         _spotService = spotService;
         _geospatialService = geospatialService;
         _logger = logger;
+        _socialMediaService = socialMediaService;
     }
 
     public async Task<DiscoveryResult> RunDiscoveryAsync(CancellationToken cancellationToken = default)
@@ -82,18 +77,7 @@ public class SpotDiscoveryService : ISpotDiscoveryService
                 result.Errors.Add($"Google Places error: {ex.Message}");
             }
 
-            try
-            {
-                var socialCandidates = await DiscoverFromSocialMediaAsync(cancellationToken);
-                allCandidates.AddRange(socialCandidates);
-                result.SourceBreakdown[DiscoverySource.SocialMedia] = socialCandidates.Count;
-                _logger.LogInformation("Discovered {Count} candidates from social media", socialCandidates.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in social media discovery: {Error}", ex.Message);
-                result.Errors.Add($"Social media error: {ex.Message}");
-            }
+            
 
             result.TotalCandidatesFound = allCandidates.Count;
 
@@ -190,19 +174,7 @@ public class SpotDiscoveryService : ISpotDiscoveryService
         }
     }
 
-    public async Task<List<SpotCandidate>> DiscoverFromSocialMediaAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogInformation("Starting social media discovery");
-            return await _candidateExtractionService.ExtractFromSocialMediaAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in social media discovery: {Error}", ex.Message);
-            return new List<SpotCandidate>();
-        }
-    }
+    
 
     public async Task<SpotCandidate> EnrichCandidateAsync(SpotCandidate candidate, CancellationToken cancellationToken = default)
     {
@@ -219,7 +191,7 @@ public class SpotDiscoveryService : ISpotDiscoveryService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error enriching candidate {CandidateName}: {Error}", candidate.Name, ex.Message);
-            candidate.Status = CandidateStatus.Discovered; // Reset status on error
+            candidate.Status = CandidateStatus.Discovered; 
             throw;
         }
     }
@@ -272,7 +244,7 @@ public class SpotDiscoveryService : ISpotDiscoveryService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error verifying candidate {CandidateName}: {Error}", candidate.Name, ex.Message);
-            candidate.Status = CandidateStatus.Enriched; // Reset to previous status on error
+            candidate.Status = CandidateStatus.Enriched; 
             throw;
         }
     }
@@ -362,7 +334,7 @@ public class SpotDiscoveryService : ISpotDiscoveryService
                 PriceRange = candidate.EstimatedPriceRange,
                 Specialties = candidate.Specialties,
                 CreatedByUserId = approvedByUserId,
-                IsVerified = candidate.QualityScore >= 0.8, // High quality candidates are auto-verified
+                IsVerified = candidate.QualityScore >= 0.8, 
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -461,7 +433,7 @@ public class SpotDiscoveryService : ISpotDiscoveryService
 
             var nearbySpots = await _geospatialService.FindNearbySpots(
                 new Models.Location { Latitude = candidate.Location.Y, Longitude = candidate.Location.X },
-                0.1, // 100 meters
+                0.1, 
                 10);
 
             foreach (var spot in nearbySpots)
@@ -549,7 +521,7 @@ public class SpotDiscoveryService : ISpotDiscoveryService
         var maxLength = Math.Max(normalized1.Length, normalized2.Length);
         var similarity = 1.0 - (double)distance / maxLength;
 
-        return similarity >= 0.8; // 80% similarity threshold
+        return similarity >= 0.8; 
     }
 
     private int LevenshteinDistance(string s1, string s2)
@@ -577,5 +549,10 @@ public class SpotDiscoveryService : ISpotDiscoveryService
         }
 
         return matrix[s1.Length, s2.Length];
+    }
+
+    public Task<List<SpotCandidate>> DiscoverFromSocialMediaAsync(CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
     }
 }

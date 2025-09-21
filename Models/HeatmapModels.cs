@@ -23,7 +23,7 @@ public class HeatmapPoint
 {
     public Location Location { get; set; } = new();
     public int SpotCount { get; set; }
-    public double Intensity { get; set; } // 0-100 scale
+    public double Intensity { get; set; } 
     public double AverageBusyness { get; set; }
     public double Radius { get; set; }
     public HeatmapCategory Category { get; set; }
@@ -59,7 +59,7 @@ public class UnderservedArea
     public string AreaName { get; set; } = string.Empty;
     public int Population { get; set; }
     public int CurrentSpotCount { get; set; }
-    public double SpotsPerCapita { get; set; } // Per 100k people
+    public double SpotsPerCapita { get; set; } 
     public int RecommendedSpots { get; set; }
     public UnderservedSeverity Severity { get; set; }
     public List<string> Reasons { get; set; } = new();
@@ -78,8 +78,8 @@ public class BusinessOpportunity
 {
     public Location Location { get; set; } = new();
     public string AreaName { get; set; } = string.Empty;
-    public double OpportunityScore { get; set; } // 0-100
-    public int EstimatedDemand { get; set; } // Number of potential spots
+    public double OpportunityScore { get; set; } 
+    public int EstimatedDemand { get; set; } 
     public CompetitionLevel CompetitionLevel { get; set; }
     public string RecommendedInvestment { get; set; } = string.Empty;
     public List<string> Reasons { get; set; } = new();
@@ -100,7 +100,7 @@ public enum CompetitionLevel
 public class HeatmapRequest
 {
     public Location? Center { get; set; }
-    public double RadiusKm { get; set; } = 20; // Default to 20km for Lagos
+    public double RadiusKm { get; set; } = 20; 
     public bool IncludeUnderservedAreas { get; set; } = true;
     public bool IncludeBusinessOpportunities { get; set; } = true;
     public HeatmapCategory MinIntensity { get; set; } = HeatmapCategory.VeryLow;

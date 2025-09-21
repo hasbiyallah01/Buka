@@ -82,7 +82,7 @@ public class BusynessService : IBusynessService
                 EstimatedWaitMinutes = checkIn.EstimatedWaitMinutes,
                 Notes = checkIn.Notes,
                 Timestamp = checkIn.Timestamp,
-                IsVerified = true // In real app, implement verification logic
+                IsVerified = true 
             };
 
             if (!_checkIns.ContainsKey(checkIn.SpotId))
@@ -194,15 +194,15 @@ public class BusynessService : IBusynessService
             var now = DateTime.Now;
             var hour = now.Hour;
             if (hour >= 12 && hour <= 14)
-                return 85; // Lunch rush
+                return 85; 
             else if (hour >= 18 && hour <= 20)
-                return 90; // Dinner rush
+                return 90; 
             else if (hour >= 11 && hour <= 15)
-                return 60; // Moderate lunch period
+                return 60; 
             else if (hour >= 17 && hour <= 21)
-                return 70; // Moderate dinner period
+                return 70; 
             else
-                return 25; // Off-peak
+                return 25; 
 
         }
         catch (Exception ex)
@@ -264,7 +264,7 @@ public class BusynessService : IBusynessService
 
         for (int day = 0; day < 7; day++)
         {
-            for (int hour = 6; hour < 22; hour++) // Operating hours 6 AM - 10 PM
+            for (int hour = 6; hour < 22; hour++) 
             {
                 var dayOfWeek = (DayOfWeek)day;
                 var busynessPercentage = CalculateHourlyBusyness(dayOfWeek, hour);
@@ -287,13 +287,13 @@ public class BusynessService : IBusynessService
         int busyness = 20;
         if (day == DayOfWeek.Saturday || day == DayOfWeek.Sunday)
             busyness += 15;
-        if (hour >= 12 && hour <= 14) // Lunch
+        if (hour >= 12 && hour <= 14) 
             busyness += 50;
-        else if (hour >= 18 && hour <= 20) // Dinner
+        else if (hour >= 18 && hour <= 20) 
             busyness += 60;
-        else if (hour >= 11 && hour <= 15) // Extended lunch
+        else if (hour >= 11 && hour <= 15) 
             busyness += 25;
-        else if (hour >= 17 && hour <= 21) // Extended dinner
+        else if (hour >= 17 && hour <= 21) 
             busyness += 35;
         if (day == DayOfWeek.Friday && hour >= 17)
             busyness += 20;
@@ -431,7 +431,7 @@ public class BusynessService : IBusynessService
         if (request.UserRatingsTotal >= 500) adjustment += 1;
         else if (request.UserRatingsTotal <= 50) adjustment -= 1;
         if (request.IsOpenNow == true) adjustment += 1;
-        if (request.PriceLevel == PriceRange.Budget) adjustment += 1; // Cheap places are busier
+        if (request.PriceLevel == PriceRange.Budget) adjustment += 1; 
         else if (request.PriceLevel == PriceRange.VeryExpensive) adjustment -= 1;
         var finalLevel = (int)baseLevel + adjustment;
         return (BusynessLevel)Math.Max(1, Math.Min(6, finalLevel));
@@ -439,7 +439,7 @@ public class BusynessService : IBusynessService
 
     private BusynessLevel EstimateBusynessFromRating(decimal? rating, int? reviewCount, bool? isOpen)
     {
-        var score = 50; // Base score
+        var score = 50; 
 
         if (rating.HasValue)
         {
@@ -458,8 +458,8 @@ public class BusynessService : IBusynessService
         if (isOpen == true) score += 10;
         else if (isOpen == false) score -= 20;
         var hour = DateTime.Now.Hour;
-        if (hour >= 12 && hour <= 14) score += 20; // Lunch rush
-        else if (hour >= 18 && hour <= 20) score += 25; // Dinner rush
+        if (hour >= 12 && hour <= 14) score += 20; 
+        else if (hour >= 18 && hour <= 20) score += 25; 
 
         return CalculateBusynessFromPopularity(Math.Max(0, Math.Min(100, score)));
     }
@@ -467,9 +467,9 @@ public class BusynessService : IBusynessService
     private int CalculateWaitTimeFromGooglePlace(GooglePlaceBusynessRequest request, BusynessLevel level)
     {
         var baseWaitTime = CalculateWaitTimeFromLevel(level);
-        if (request.UserRatingsTotal >= 1000) baseWaitTime += 5; // Very popular places
-        if (request.Rating >= 4.5m) baseWaitTime += 3; // High-rated places
-        if (request.PriceLevel == PriceRange.Budget) baseWaitTime += 2; // Cheap places
+        if (request.UserRatingsTotal >= 1000) baseWaitTime += 5; 
+        if (request.Rating >= 4.5m) baseWaitTime += 3; 
+        if (request.PriceLevel == PriceRange.Budget) baseWaitTime += 2; 
 
         return Math.Max(0, baseWaitTime);
     }
@@ -600,7 +600,7 @@ public class BusynessService : IBusynessService
         var baseScore = GetTimeBasedBusynessScore();
         if (request.Rating.HasValue)
         {
-            if (request.Rating >= 4.5m) baseScore += 15; // Popular places are busier
+            if (request.Rating >= 4.5m) baseScore += 15; 
             else if (request.Rating >= 4.0m) baseScore += 10;
             else if (request.Rating <= 3.0m) baseScore -= 10;
         }
@@ -631,11 +631,11 @@ public class BusynessService : IBusynessService
         var hour = now.Hour;
         var dayOfWeek = now.DayOfWeek;
 
-        var score = 30; // Base score
-        if (hour >= 12 && hour <= 14) score += 40; // Lunch rush
-        else if (hour >= 18 && hour <= 20) score += 45; // Dinner rush
-        else if (hour >= 11 && hour <= 15) score += 20; // Extended lunch
-        else if (hour >= 17 && hour <= 21) score += 25; // Extended dinner
+        var score = 30; 
+        if (hour >= 12 && hour <= 14) score += 40; 
+        else if (hour >= 18 && hour <= 20) score += 45; 
+        else if (hour >= 11 && hour <= 15) score += 20; 
+        else if (hour >= 17 && hour <= 21) score += 25; 
         if (dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday)
             score += 15;
         if (dayOfWeek == DayOfWeek.Friday && hour >= 17)

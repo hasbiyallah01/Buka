@@ -158,7 +158,7 @@ public class SocialMediaService : ISocialMediaService
             var positiveCount = words.Count(w => positiveWords.Contains(w));
             var negativeCount = words.Count(w => negativeWords.Contains(w));
             
-            if (positiveCount == 0 && negativeCount == 0) return 0; // neutral
+            if (positiveCount == 0 && negativeCount == 0) return 0; 
             
             var totalSentimentWords = positiveCount + negativeCount;
             var sentimentScore = (double)(positiveCount - negativeCount) / totalSentimentWords;
@@ -168,7 +168,7 @@ public class SocialMediaService : ISocialMediaService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error analyzing sentiment");
-            return 0; // neutral on error
+            return 0; 
         }
     }
 
@@ -258,7 +258,7 @@ public class SocialMediaService : ISocialMediaService
                         AuthorHandle = $"u/{data.Author}",
                         CreatedAt = DateTimeOffset.FromUnixTimeSeconds((long)data.CreatedUtc).DateTime,
                         Likes = data.Ups,
-                        Shares = 0, // Reddit doesn't have shares
+                        Shares = 0, 
                         Comments = data.NumComments,
                         Hashtags = await ExtractHashtagsAsync(data.Title + " " + data.Selftext),
                         PostUrl = $"https://reddit.com{data.Permalink}",
@@ -298,8 +298,8 @@ public class SocialMediaService : ISocialMediaService
     {
         int num = Math.Min(10, remaining);
 
-        var requestUrl = $"https://www.googleapis.com/customsearch/v1?q={Uri.EscapeDataString(query)}&key={apiKey}&cx={searchEngineId}&start={startIndex}&num={num}";
-        var response = await _httpClient.GetAsync(requestUrl);
+            var requestUrl = $"https://www.googleapis.com/customsearch/v1?q={Uri.EscapeDataString(query)}&key={apiKey}&cx={searchEngineId}&start={startIndex}&num={num}";
+            var response = await _httpClient.GetAsync(requestUrl);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
@@ -317,7 +317,7 @@ public class SocialMediaService : ISocialMediaService
         }
         else
         {
-            break; // No more results
+            break; 
         }
 
         remaining -= num;

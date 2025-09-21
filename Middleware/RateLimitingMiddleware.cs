@@ -58,7 +58,7 @@ public class RateLimitingMiddleware
         }
 
         var remaining = await _rateLimitingService.GetRemainingRequestsAsync(clientId, endpoint);
-        var resetTime = DateTimeOffset.UtcNow.AddMinutes(1); // Default reset time
+        var resetTime = DateTimeOffset.UtcNow.AddMinutes(1); 
 
         context.Response.OnStarting(() =>
         {
@@ -158,16 +158,16 @@ public class RateLimitingMiddleware
     {
         return endpoint switch
         {
-            "chat/voice" => 20,      // Lower limit for voice processing
-            "chat/text" => 100,      // Standard chat limit
-            "spots/create" => 10,    // Lower limit for creation
-            "spots/modify" => 20,    // Lower limit for modifications
-            "spots/read" => 200,     // Higher limit for reads
-            "reviews/create" => 15,  // Lower limit for review creation
-            "reviews/modify" => 10,  // Lower limit for review modifications
-            "reviews/read" => 100,   // Standard limit for reads
-            "auth" => 5,             // Very low limit for auth attempts
-            _ => 100                 // Default limit
+            "chat/voice" => 20,      
+            "chat/text" => 100,      
+            "spots/create" => 10,    
+            "spots/modify" => 20,    
+            "spots/read" => 200,     
+            "reviews/create" => 15,  
+            "reviews/modify" => 10,  
+            "reviews/read" => 100,   
+            "auth" => 5,             
+            _ => 100                 
         };
     }
 }

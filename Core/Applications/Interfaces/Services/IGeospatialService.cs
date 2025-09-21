@@ -33,8 +33,6 @@ public interface IGeospatialService
 
     Task<IEnumerable<PlaceCandidate>> SearchPlacesAsync(Location center, double radiusKm, string query = "amala restaurant");
 
-    Task<PlaceDetails?> GetPlaceDetailsAsync(string placeId);
-
     string GenerateStaticMapUrl(GoogleMapsUrlRequest request);
 
     string GenerateEmbedMapUrl(Location center, int zoomLevel = 15);

@@ -59,9 +59,9 @@ public class VoiceProcessingService : IVoiceProcessingService
 
             _logger.LogWarning("Voice processing is not fully implemented. Returning placeholder text.");
             
-            await Task.Delay(1000); // Simulate processing time
+            await Task.Delay(1000); 
             
-            return "I'm looking for amala spots near me"; // Placeholder response
+            return "I'm looking for amala spots near me"; 
         }
         catch (Exception ex) when (!(ex is VoiceProcessingException))
         {
@@ -89,23 +89,23 @@ public class VoiceProcessingService : IVoiceProcessingService
 
             _logger.LogWarning("Text-to-speech is not fully implemented. Returning placeholder audio data.");
             
-            await Task.Delay(1000); // Simulate processing time
+            await Task.Delay(1000); 
 
             var placeholderWav = new byte[] 
             {
-                0x52, 0x49, 0x46, 0x46, // "RIFF"
-                0x24, 0x00, 0x00, 0x00, // File size
-                0x57, 0x41, 0x56, 0x45, // "WAVE"
-                0x66, 0x6D, 0x74, 0x20, // "fmt "
-                0x10, 0x00, 0x00, 0x00, // Subchunk1Size
-                0x01, 0x00,             // AudioFormat (PCM)
-                0x01, 0x00,             // NumChannels (Mono)
-                0x44, 0xAC, 0x00, 0x00, // SampleRate (44100)
-                0x88, 0x58, 0x01, 0x00, // ByteRate
-                0x02, 0x00,             // BlockAlign
-                0x10, 0x00,             // BitsPerSample
-                0x64, 0x61, 0x74, 0x61, // "data"
-                0x00, 0x00, 0x00, 0x00  // Subchunk2Size
+                0x52, 0x49, 0x46, 0x46, 
+                0x24, 0x00, 0x00, 0x00, 
+                0x57, 0x41, 0x56, 0x45, 
+                0x66, 0x6D, 0x74, 0x20, 
+                0x10, 0x00, 0x00, 0x00, 
+                0x01, 0x00,             
+                0x01, 0x00,             
+                0x44, 0xAC, 0x00, 0x00, 
+                0x88, 0x58, 0x01, 0x00, 
+                0x02, 0x00,             
+                0x10, 0x00,             
+                0x64, 0x61, 0x74, 0x61, 
+                0x00, 0x00, 0x00, 0x00  
             };
             
             return placeholderWav;
@@ -231,10 +231,10 @@ public class VoiceProcessingService : IVoiceProcessingService
             return new AudioMetadata
             {
                 Format = audioFormat,
-                SampleRate = 44100, // Default assumption
-                Channels = 1, // Default assumption
-                BitRate = 128000, // Default assumption
-                Duration = TimeSpan.FromSeconds(audioData.Length / 16000.0), // Rough estimate
+                SampleRate = 44100, 
+                Channels = 1, 
+                BitRate = 128000, 
+                Duration = TimeSpan.FromSeconds(audioData.Length / 16000.0), 
                 FileSizeBytes = audioData.Length
             };
         }

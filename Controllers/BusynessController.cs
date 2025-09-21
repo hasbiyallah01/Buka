@@ -11,9 +11,7 @@ public class BusynessController : ControllerBase
     private readonly IBusynessService _busynessService;
     private readonly ILogger<BusynessController> _logger;
 
-    public BusynessController(
-        IBusynessService busynessService,
-        ILogger<BusynessController> logger)
+    public BusynessController(IBusynessService busynessService,ILogger<BusynessController> logger)
     {
         _busynessService = busynessService;
         _logger = logger;

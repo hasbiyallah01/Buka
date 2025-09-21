@@ -1,16 +1,12 @@
 using AmalaSpotLocator.Configuration;
 using AmalaSpotLocator.Interfaces;
-using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using AmalaSpotLocator.Models;
+using AmalaSpotLocator.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using GoogleApi.Entities.Places.Search.Find.Response;
+using Microsoft.Extensions.Logging;
 
 namespace AmalaSpotLocator.Core.Applications.Services;
 
@@ -19,22 +15,20 @@ public class GoogleMapsService : IGoogleMapsService
     private readonly GoogleMapsSettings _settings;
     private readonly ILogger<GoogleMapsService> _logger;
     private readonly HttpClient _httpClient;
-    
+    private readonly AmalaSpotContext _context;
+
     private const string GeocodingBaseUrl = "https://maps.googleapis.com/maps/api/geocode/json";
     private const string PlacesSearchBaseUrl = "https://maps.googleapis.com/maps/api/place/textsearch/json";
     private const string PlacesNearbyBaseUrl = "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
     private const string PlacesDetailsBaseUrl = "https://maps.googleapis.com/maps/api/place/details/json";
     private const string DirectionsBaseUrl = "https://maps.googleapis.com/maps/api/directions/json";
     private const string StaticMapBaseUrl = "https://maps.googleapis.com/maps/api/staticmap";
-
-    public GoogleMapsService(
-        IOptions<GoogleMapsSettings> settings,
-        ILogger<GoogleMapsService> logger,
-        HttpClient httpClient)
+    public GoogleMapsService( IOptions<GoogleMapsSettings> settings,ILogger<GoogleMapsService> logger,HttpClient httpClient,AmalaSpotContext context)
     {
         _settings = settings.Value ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _context = context;
     }
 
     public async Task<Location?> GeocodeAddressAsync(string address)
@@ -100,38 +94,121 @@ public class GoogleMapsService : IGoogleMapsService
         }
     }
 
+    public static AmalaSpot ToAmalaSpot(PlaceCandidate candidate)
+    {
+        return new AmalaSpot
+        {
+            Name = candidate.Name,
+            Address = candidate.Address,
+            Location = new NetTopologySuite.Geometries.Point(candidate.Location.Longitude, candidate.Location.Latitude)
+            {
+                SRID = 4326
+            },
+            AverageRating = candidate.Rating ?? 0,
+            ReviewCount = candidate.UserRatingsTotal ?? 0,
+            PriceRange = candidate.PriceLevel ?? PriceRange.Budget,
+            Specialties = candidate.Types ?? new List<string>(),
+            IsVerified = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Id = Guid.NewGuid()
+        };
+    }
+
+
     public async Task<IEnumerable<PlaceCandidate>> SearchPlacesAsync(Location center, double radiusMeters, string query = "amala restaurant")
     {
         try
         {
             var url = $"{PlacesSearchBaseUrl}?query={Uri.EscapeDataString(query)}" +
-                     $"&locationbias=circle:{radiusMeters:F0}@{center.Latitude},{center.Longitude}" +
-                     $"&key={_settings.PlacesApiKey}";
-            
+                      $"&locationbias=circle:{radiusMeters:F0}@{center.Latitude},{center.Longitude}" +
+                      $"&key={_settings.PlacesApiKey}";
+
             _logger.LogDebug("Making Google Places API request to: {Url}", url.Replace(_settings.PlacesApiKey, "***"));
-            
+
             var response = await _httpClient.GetStringAsync(url);
-            
             _logger.LogDebug("Google Places API response length: {Length} characters", response.Length);
-            
+
             using var document = JsonDocument.Parse(response);
             var root = document.RootElement;
-            
+
             var status = root.GetProperty("status").GetString();
             _logger.LogDebug("Google Places API status: {Status}", status);
-            
+
             if (status == "OK")
             {
                 var results = new List<PlaceCandidate>();
                 var resultsArray = root.GetProperty("results");
                 _logger.LogDebug("Google Places API returned {Count} results", resultsArray.GetArrayLength());
-                
+
                 foreach (var result in resultsArray.EnumerateArray())
                 {
                     var candidate = MapJsonToPlaceCandidate(result);
                     results.Add(candidate);
                     _logger.LogDebug("Found place: {Name} at {Address}", candidate.Name, candidate.Address);
                 }
+
+                if (results.Count > 0)
+                {
+                    var existingData = await _context.AmalaSpots
+                        .AsNoTracking()
+                        .Select(s => new { s.Name, s.Address })
+                        .ToListAsync();
+
+                    var existingNames = existingData
+                        .Select(x => x.Name)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                    var newResults = results
+                        .Where(r => !existingNames.Contains(r.Name))
+                        .ToList();
+
+                    if (newResults.Any())
+                    {
+                        var amalaSpots = new List<AmalaSpot>();
+
+                        foreach (var candidate in newResults)
+                        {
+                            var spot = ToAmalaSpot(candidate);
+
+                            var details = await GetPlaceDetailsAsync(candidate.PlaceId);
+
+                            if (details != null)
+                            {
+                                spot.PhoneNumber = details.FormattedPhoneNumber ?? null;
+
+                                var todayHours = details.OpeningHours?.FirstOrDefault();
+                                spot.OpeningTime = todayHours?.OpenTime ?? new TimeSpan(10, 0, 0);
+                                spot.ClosingTime = todayHours?.CloseTime ?? new TimeSpan(17, 0, 0);
+                            }
+                            else
+                            {
+                                spot.PhoneNumber = "N/A";
+                                spot.OpeningTime = new TimeSpan(10, 0, 0);
+                                spot.ClosingTime = new TimeSpan(17, 0, 0);
+                            }
+
+                            amalaSpots.Add(spot);
+                        }
+
+                        try
+                        {
+                            await _context.AmalaSpots.AddRangeAsync(amalaSpots);
+                            await _context.SaveChangesAsync();
+                            _logger.LogInformation("Saved {Count} new AmalaSpots to the database", amalaSpots.Count);
+                        }
+                        catch (DbUpdateException dbEx)
+                        {
+                            _logger.LogError(dbEx, "Failed to save AmalaSpots to database.");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogInformation("No new places to save — all results already exist in the database.");
+                    }
+                }
+
+
                 return results;
             }
 
@@ -140,6 +217,7 @@ public class GoogleMapsService : IGoogleMapsService
             {
                 _logger.LogWarning("Google Places API error message: {ErrorMessage}", errorMessage.GetString());
             }
+
             return Enumerable.Empty<PlaceCandidate>();
         }
         catch (Exception ex)
@@ -148,6 +226,7 @@ public class GoogleMapsService : IGoogleMapsService
             return Enumerable.Empty<PlaceCandidate>();
         }
     }
+
 
     public async Task<IEnumerable<PlaceCandidate>> SearchPlacesWithMultipleQueriesAsync(Location center, double radiusMeters, IEnumerable<string> queries)
     {
@@ -268,7 +347,7 @@ public class GoogleMapsService : IGoogleMapsService
 
         markers.Add($"color:red|label:C|{center.Latitude},{center.Longitude}");
 
-        var spotList = spots.Take(10).ToList(); // Limit to 10 spots to avoid URL length issues
+        var spotList = spots.Take(30).ToList(); 
         for (int i = 0; i < spotList.Count; i++)
         {
             var spot = spotList[i];
@@ -277,19 +356,19 @@ public class GoogleMapsService : IGoogleMapsService
         }
 
         var markersParam = string.Join("&markers=", markers);
-        
+
         return $"https://maps.googleapis.com/maps/api/staticmap?" +
-               $"center={center.Latitude},{center.Longitude}" +
-               $"&zoom={zoom}" +
-               $"&size={width}x{height}" +
-               $"&markers={markersParam}" +
-               $"&key={_settings.ApiKey}";
+                $"center={center.Latitude},{center.Longitude}" +
+                $"&zoom={zoom}" +
+                $"&size={width}x{height}" +
+                $"&markers={markersParam}" +
+                $"&key={_settings.ApiKey}";
     }
 
     public string GenerateStaticMapUrl(Location location, int width = 600, int height = 400, int zoom = 14, string? label = null)
     {
         var markerLabel = string.IsNullOrEmpty(label) ? "A" : label;
-        
+
         return $"https://maps.googleapis.com/maps/api/staticmap?" +
                $"center={location.Latitude},{location.Longitude}" +
                $"&zoom={zoom}" +
@@ -344,7 +423,7 @@ public class GoogleMapsService : IGoogleMapsService
         }
     }
 
-    private PlaceCandidate MapJsonToPlaceCandidate(JsonElement result)
+    public static PlaceCandidate MapJsonToPlaceCandidate(JsonElement result)
     {
         var geometry = result.GetProperty("geometry").GetProperty("location");
         
@@ -421,18 +500,7 @@ public class GoogleMapsService : IGoogleMapsService
         return placeDetails;
     }
 
-    private TimeSpan ParseTime(string timeString)
-    {
-        if (timeString.Length == 4 && int.TryParse(timeString, out var time))
-        {
-            var hours = time / 100;
-            var minutes = time % 100;
-            return TimeSpan.FromHours(hours).Add(TimeSpan.FromMinutes(minutes));
-        }
-        return TimeSpan.Zero;
-    }
-
-    private PriceRange? MapPriceLevel(int? priceLevel)
+    private static PriceRange? MapPriceLevel(int? priceLevel)
     {
         return priceLevel switch
         {
@@ -445,8 +513,16 @@ public class GoogleMapsService : IGoogleMapsService
         };
     }
 
-
-
+    private TimeSpan ParseTime(string timeString)
+    {
+        if (timeString.Length == 4 && int.TryParse(timeString, out var time))
+        {
+            var hours = time / 100;
+            var minutes = time % 100;
+            return TimeSpan.FromHours(hours).Add(TimeSpan.FromMinutes(minutes));
+        }
+        return TimeSpan.Zero;
+    }
     private List<Location> DecodePolyline(string encoded)
     {
         var points = new List<Location>();

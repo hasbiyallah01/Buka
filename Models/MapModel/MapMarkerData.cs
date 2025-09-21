@@ -16,6 +16,6 @@ public class MapMarkerData
     public bool IsCurrentlyOpen { get; set; }
     public string Address { get; set; } = string.Empty;
     public List<string> Specialties { get; set; } = new();
-    public string MarkerColor { get; set; } = "#FF6B6B"; // Default red color
-    public string MarkerIcon { get; set; } = "restaurant"; // Default icon
+    public string MarkerColor { get; set; } = "#FF6B6B"; 
+    public string MarkerIcon { get; set; } = "restaurant"; 
 }
