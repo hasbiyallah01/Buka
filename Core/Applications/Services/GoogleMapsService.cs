@@ -5,10 +5,6 @@ using System.Text.Json;
 using AmalaSpotLocator.Models;
 using AmalaSpotLocator.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using GoogleApi.Entities.Places.Search.Find.Response;
-using Microsoft.Extensions.Logging;
-
-namespace AmalaSpotLocator.Core.Applications.Services;
 
 public class GoogleMapsService : IGoogleMapsService
 {
@@ -50,7 +46,7 @@ public class GoogleMapsService : IGoogleMapsService
                 var result = root.GetProperty("results")[0];
                 var location = result.GetProperty("geometry").GetProperty("location");
                 
-                return new Location(
+                return new AmalaSpotLocator.Models.Location(
                     location.GetProperty("lat").GetDouble(),
                     location.GetProperty("lng").GetDouble()
                 );

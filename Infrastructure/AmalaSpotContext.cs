@@ -23,6 +23,21 @@ namespace AmalaSpotLocator.Infrastructure
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.HasPostgresExtension("postgis");
+            modelBuilder.Entity<SpotCandidate>()
+                .Property(e => e.SourceData)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, object>>(v, (JsonSerializerOptions)null) 
+                )
+                .Metadata.SetValueComparer(
+                    new ValueComparer<Dictionary<string, object>>(
+                        (d1, d2) => JsonSerializer.Serialize(d1, (JsonSerializerOptions)null) ==
+                                    JsonSerializer.Serialize(d2, (JsonSerializerOptions)null), 
+                        d => JsonSerializer.Serialize(d, (JsonSerializerOptions)null).GetHashCode(), 
+                        d => JsonSerializer.Deserialize<Dictionary<string, object>>(
+                                 JsonSerializer.Serialize(d, (JsonSerializerOptions)null), (JsonSerializerOptions)null) 
+                    )
+                );
 
             modelBuilder.Entity<AmalaSpot>(entity =>
             {

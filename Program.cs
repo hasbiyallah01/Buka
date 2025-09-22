@@ -9,6 +9,7 @@ using AmalaSpotLocator.Core.Applications.Services;
 using AmalaSpotLocator.Core.Applications.Interfaces.Services;
 using AmalaSpotLocator.Interfaces;
 using AmalaSpotLocator.Agents;
+using AmalaSpotLocator.Core.Applications.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,10 @@ builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection(JwtSettings.SectionName));
 builder.Services.Configure<SecuritySettings>(
     builder.Configuration.GetSection(SecuritySettings.SectionName));
+builder.Services.Configure<WeatherApiSettings>(
+    builder.Configuration.GetSection("WeatherApi"));
+builder.Services.Configure<DiscoverySettings>(
+    builder.Configuration.GetSection(DiscoverySettings.SectionName));
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -111,6 +116,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddScoped<IGeospatialService, GeospatialService>();
@@ -130,12 +136,11 @@ builder.Services.AddScoped<INLUAgent, NLUAgent>();
 builder.Services.AddScoped<IQueryAgent, QueryAgent>();
 builder.Services.AddScoped<IResponseAgent, ResponseAgent>();
 builder.Services.AddScoped<IAgentOrchestrator, AgentOrchestrator>();
-builder.Services.Configure<DiscoverySettings>(
-    builder.Configuration.GetSection(DiscoverySettings.SectionName));
 builder.Services.AddScoped<IWebScrapingService, WebScrapingService>();
 builder.Services.AddScoped<ICandidateExtractionService, CandidateExtractionService>();
 builder.Services.AddScoped<ISpotDiscoveryService, SpotDiscoveryService>();
 builder.Services.AddScoped<ISocialMediaService, SocialMediaService>();
+builder.Services.AddScoped<IWeatherService, WeatherService>();
 
 var app = builder.Build();
 

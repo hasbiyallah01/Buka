@@ -835,3 +835,5 @@ public class SpotService : ISpotService
 
     #endregion
 }
+
+

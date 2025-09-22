@@ -1,8 +1,4 @@
 using AmalaSpotLocator.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
-namespace AmalaSpotLocator.Interfaces;
 
 public interface IGoogleMapsService
 {

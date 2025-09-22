@@ -7,6 +7,7 @@ using Swashbuckle.AspNetCore.Annotations;
 using AmalaSpotLocator.Models.SpotModel;
 using AmalaSpotLocator.Models;
 using AmalaSpotLocator.Core.Applications.Services;
+using AmalaSpotLocator.Core.Applications.Interfaces;
 
 namespace AmalaSpotLocator.Controllers;
 
@@ -20,17 +21,20 @@ public class SpotsController : ControllerBase
     private readonly IGeospatialService _geospatialService;
     private readonly ISpotMappingService _spotMappingService;
     private readonly ILogger<SpotsController> _logger;
+    private readonly IWeatherService _weatherService;
 
     public SpotsController(
         ISpotService spotService,
         IGeospatialService geospatialService,
         ISpotMappingService spotMappingService,
-        ILogger<SpotsController> logger)
+        ILogger<SpotsController> logger,
+        IWeatherService weatherService)
     {
         _spotService = spotService;
         _geospatialService = geospatialService;
         _spotMappingService = spotMappingService;
         _logger = logger;
+        _weatherService = weatherService;
     }
 
     [HttpGet("nearby")]
@@ -387,6 +391,26 @@ public class SpotsController : ControllerBase
             _logger.LogError(ex, "Error getting recent spots");
             return StatusCode(500, "An error occurred while retrieving recent spots");
         }
+    }
+
+
+    [HttpGet("{spotId}/weather")]
+    public async Task<ActionResult<WeatherForecast>> GetSpotWeather(Guid spotId)
+    {
+        var spot = await _spotService.GetByIdAsync(spotId);
+        if (spot == null)
+            return NotFound(new { message = "Spot not found" });
+
+
+        var weather = await _weatherService.GetWeatherAsync(
+            spot.Location.Y,
+            spot.Location.X
+        );
+
+        if (weather == null)
+            return StatusCode(500, new { message = "Failed to fetch weather data" });
+
+        return Ok(weather);
     }
 
     #region Private Helper Methods
